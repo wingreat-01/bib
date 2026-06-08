@@ -11,6 +11,7 @@ const CONFIG = {
     BORROWERS: 'Borrowers',
     LOANS:     'Loans',
     PAYMENTS:  'Payments',
+    REQUESTS:  'LoanRequests',
     SETTINGS:  'Settings'
   },
   INTEREST_RATE: 0.10,          // 10% per month
@@ -40,9 +41,10 @@ function doPost(e) {
       case 'getLoans':      return respond(getLoans(data.borrowerId));
       case 'addLoan':       return respond(addLoan(data));
       case 'addPayment':    return respond(addPayment(data));
-      case 'getDashboard':  return respond(getDashboard());
-      case 'getLoanDetail': return respond(getLoanDetail(data.loanId));
-      default:              return respond({ error: 'Unknown action: ' + action }, false);
+      case 'getDashboard':    return respond(getDashboard());
+      case 'getLoanDetail':   return respond(getLoanDetail(data.loanId));
+      case 'addLoanRequest':  return respond(addLoanRequest(data));
+      default:                return respond({ error: 'Unknown action: ' + action }, false);
     }
   } catch (err) {
     return respond({ error: err.message }, false);
@@ -73,6 +75,7 @@ function createSheet(ss, name) {
     Loans:     ['Loan ID', 'Borrower ID', 'Borrower Name', 'Principal', 'Interest Rate', 'Term (Months)',
                 'Monthly Payment', 'Total Payable', 'Date Released', 'Due Date', 'Status', 'Purpose', 'Notes'],
     Payments:  ['Payment ID', 'Loan ID', 'Borrower ID', 'Amount', 'Date', 'Running Balance', 'Notes'],
+    LoanRequests: ['Ref ID', 'Name', 'Phone', 'Dept', 'Employee No', 'Amount', 'Term', 'Purpose', 'Notes', 'Date Submitted', 'Status'],
     Settings:  ['Key', 'Value']
   };
   if (headers[name]) {
@@ -304,4 +307,24 @@ function getDashboard() {
 function initializeSheets() {
   Object.values(CONFIG.SHEETS).forEach(name => getSheet(name));
   return { message: 'Sheets initialized.' };
+}
+
+// ── LOAN REQUEST FUNCTIONS ────────────────────────────────────────
+
+function addLoanRequest(data) {
+  const sheet = getSheet(CONFIG.SHEETS.REQUESTS);
+  sheet.appendRow([
+    data.refId       || generateId('REQ'),
+    data.name        || '',
+    data.phone       || '',
+    data.dept        || '',
+    data.empNo       || '',
+    parseFloat(data.amount) || 0,
+    parseInt(data.term)     || 0,
+    data.purpose     || '',
+    data.notes       || '',
+    new Date(),
+    'Pending'
+  ]);
+  return { message: 'Request saved.' };
 }
