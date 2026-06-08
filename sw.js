@@ -1,7 +1,7 @@
-// BIB Loans — Service Worker
+// BIB Loans — Service Worker v2
 // Build, Invest, Borrow | Loans Made Simple
 
-const CACHE_NAME = 'bib-loans-v1';
+const CACHE_NAME = 'bib-loans-v2';
 const STATIC_ASSETS = [
   './index.html',
   './manifest.json',
@@ -9,7 +9,7 @@ const STATIC_ASSETS = [
   './icon-512.jpg'
 ];
 
-// ── Install: cache static shell ──────────────────────────────────────────────
+// ── Install: cache static shell ──────────────────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -20,25 +20,28 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// ── Activate: clean old caches ───────────────────────────────────────────────
+// ── Activate: clean old caches ───────────────────────────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
         keys
           .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
+          .map((key) => {
+            console.log('[BIB SW] Deleting old cache:', key);
+            return caches.delete(key);
+          })
       )
     )
   );
   self.clients.claim();
 });
 
-// ── Fetch: cache-first for static, network-first for API ─────────────────────
+// ── Fetch: network-only for GAS API, cache-first for static ─────
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Google Apps Script API calls — network only (no caching)
+  // Google Apps Script API calls — network only
   if (url.hostname.includes('script.google.com')) {
     event.respondWith(
       fetch(event.request).catch(() =>
@@ -46,6 +49,20 @@ self.addEventListener('fetch', (event) => {
           headers: { 'Content-Type': 'application/json' }
         })
       )
+    );
+    return;
+  }
+
+  // Google Fonts — network first, fallback to cache
+  if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const cloned = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cloned));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
@@ -66,7 +83,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// ── Background sync for offline loan submissions ─────────────────────────────
+// ── Background sync ──────────────────────────────────────────────
 self.addEventListener('sync', (event) => {
   if (event.tag === 'bib-sync-loans') {
     event.waitUntil(syncPendingLoans());
@@ -74,7 +91,6 @@ self.addEventListener('sync', (event) => {
 });
 
 async function syncPendingLoans() {
-  // Handled by the main app; SW just triggers the event
   const clients = await self.clients.matchAll();
   clients.forEach((client) => client.postMessage({ type: 'SYNC_LOANS' }));
 }
