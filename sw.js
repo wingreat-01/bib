@@ -1,7 +1,7 @@
 // BIB Loans — Service Worker v2
 // Build, Invest, Borrow | Loans Made Simple
 
-const CACHE_NAME = 'bib-loans-v2';
+const CACHE_NAME = 'bib-loans-v3';
 const STATIC_ASSETS = [
   './index.html',
   './manifest.json',
