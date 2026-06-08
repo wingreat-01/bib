@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#1a4fba" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BIB Loans" />
+  <title>BIB Loans — Loans Made Simple</title>
+
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icon-192.jpg" />
+  <link rel="apple-touch-icon" sizes="512x512" href="./icon-512.jpg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── CSS Variables ──────────────────────────────────────── */
+    :root {
+      --blue:       #1a4fba;
+      --blue-dark:  #0d2f7e;
+      --blue-light: #3a6fd8;
+      --green:      #5cb800;
+      --green-dark: #449000;
+      --green-light:#7ed62a;
+      --gold:       #f5a623;
+      --danger:     #e53935;
+      --bg:         #f0f4ff;
+      --surface:    #ffffff;
+      --surface2:   #e8eeff;
+      --text:       #0d1b3e;
+      --text2:      #5a6a8a;
+      --border:     #d0daff;
+      --shadow:     0 2px 16px rgba(26,79,186,0.10);
+      --radius:     16px;
+      --radius-sm:  10px;
+      --font:       'Nunito', sans-serif;
+      --font-display: 'DM Serif Display', serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); }
+    button { cursor: pointer; font-family: var(--font); border: none; outline: none; }
+    input, select, textarea { font-family: var(--font); }
+
+    /* ── App Shell ──────────────────────────────────────────── */
+    #app {
+      display: flex; flex-direction: column; height: 100%;
+      max-width: 480px; margin: 0 auto; background: var(--surface);
+      position: relative; box-shadow: 0 0 40px rgba(26,79,186,0.15);
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       ROLE GATE — shown on launch, hides after role chosen
+    ════════════════════════════════════════════════════════════ */
+    #role-gate {
+      position: fixed; inset: 0; z-index: 1000;
+      background: linear-gradient(160deg, var(--blue-dark) 0%, var(--blue) 55%, #4a82e4 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 32px 28px; text-align: center;
+      animation: fadeIn 0.4s ease;
+    }
+    #role-gate.hidden { display: none; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .gate-logo {
+      width: 72px; height: 72px; border-radius: 20px; background: rgba(255,255,255,0.15);
+      display: grid; place-items: center; margin-bottom: 20px;
+      font-size: 36px; backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.25);
+      animation: popIn 0.5s 0.1s both;
+    }
+    .gate-title {
+      font-family: var(--font-display); font-size: 34px; color: #fff;
+      margin-bottom: 6px; animation: popIn 0.5s 0.2s both;
+    }
+    .gate-sub {
+      font-size: 13px; color: rgba(255,255,255,0.7); letter-spacing: 1px;
+      text-transform: uppercase; margin-bottom: 48px;
+      animation: popIn 0.5s 0.25s both;
+    }
+    .gate-prompt {
+      font-size: 12px; color: rgba(255,255,255,0.55); letter-spacing: 0.5px;
+      text-transform: uppercase; font-weight: 700; margin-bottom: 16px;
+      animation: popIn 0.5s 0.3s both;
+    }
+    .gate-buttons { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 320px; animation: popIn 0.5s 0.35s both; }
+
+    .gate-btn {
+      padding: 18px 24px; border-radius: 16px; font-size: 16px; font-weight: 800;
+      display: flex; align-items: center; gap: 14px; text-align: left;
+      transition: transform 0.15s, box-shadow 0.15s; border: none;
+    }
+    .gate-btn:active { transform: scale(0.97); }
+    .gate-btn .gb-icon { font-size: 28px; flex-shrink: 0; }
+    .gate-btn .gb-text .gb-label { font-size: 16px; font-weight: 900; }
+    .gate-btn .gb-text .gb-desc  { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+
+    .gate-btn.customer {
+      background: #fff; color: var(--blue);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    .gate-btn.owner {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 2px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(8px);
+    }
+
+    /* Owner PIN overlay */
+    #pin-overlay {
+      position: fixed; inset: 0; z-index: 1100;
+      background: rgba(13,27,62,0.85); backdrop-filter: blur(6px);
+      display: flex; align-items: flex-end; justify-content: center;
+    }
+    #pin-overlay.hidden { display: none; }
+    .pin-sheet {
+      background: var(--surface); border-radius: 24px 24px 0 0;
+      padding: 28px 24px 40px; width: 100%; max-width: 480px;
+      animation: slideUp 0.3s ease;
+    }
+    .pin-handle { width: 40px; height: 4px; background: var(--border); border-radius: 4px; margin: 0 auto 24px; }
+    .pin-title { font-size: 20px; font-weight: 900; text-align: center; margin-bottom: 6px; }
+    .pin-sub { font-size: 13px; color: var(--text2); text-align: center; margin-bottom: 24px; }
+    .pin-dots { display: flex; justify-content: center; gap: 12px; margin-bottom: 28px; }
+    .pin-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--border); transition: background 0.2s; }
+    .pin-dot.filled { background: var(--blue); }
+    .pin-pad {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+      max-width: 280px; margin: 0 auto;
+    }
+    .pin-key {
+      aspect-ratio: 1; border-radius: 14px; background: var(--surface2);
+      font-size: 20px; font-weight: 800; color: var(--text);
+      border: 1.5px solid var(--border); display: grid; place-items: center;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .pin-key:active { background: var(--blue); color: #fff; transform: scale(0.94); }
+    .pin-key.del { background: transparent; font-size: 18px; border-color: transparent; color: var(--text2); }
+    .pin-key.del:active { background: #ffebee; color: var(--danger); }
+    .pin-error { text-align: center; color: var(--danger); font-size: 13px; font-weight: 700; margin-top: 16px; min-height: 20px; }
+    .pin-cancel { display: block; width: 100%; margin-top: 20px; padding: 14px; border-radius: var(--radius-sm); background: transparent; border: 2px solid var(--border); color: var(--text2); font-size: 14px; font-weight: 700; }
+
+    /* ════════════════════════════════════════════════════════════
+       CUSTOMER VIEW
+    ════════════════════════════════════════════════════════════ */
+    #customer-view { display: none; flex-direction: column; height: 100%; }
+    #customer-view.active { display: flex; }
+
+    .cv-header {
+      background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 60%, var(--blue-light) 100%);
+      padding: 20px 20px 18px; display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .cv-header-icon { font-size: 32px; }
+    .cv-header-text h1 { font-size: 20px; font-weight: 900; color: #fff; }
+    .cv-header-text p  { font-size: 11px; color: rgba(255,255,255,0.7); letter-spacing: 1px; text-transform: uppercase; }
+    .cv-exit { margin-left: auto; background: rgba(255,255,255,0.15); color: #fff; border: none; border-radius: 10px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+    .cv-body { flex: 1; overflow-y: auto; padding: 0 0 32px; }
+
+    .cv-hero {
+      background: linear-gradient(150deg, var(--blue-dark), var(--blue));
+      padding: 24px 20px 32px; color: #fff; position: relative; overflow: hidden;
+    }
+    .cv-hero::before {
+      content: ""; position: absolute; right: -40px; bottom: -40px;
+      width: 200px; height: 200px; border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+    }
+    .cv-hero h2 { font-family: var(--font-display); font-size: 26px; margin-bottom: 8px; }
+    .cv-hero p { font-size: 13px; opacity: 0.8; line-height: 1.5; }
+
+    .cv-how { display: flex; gap: 0; padding: 20px 16px 8px; }
+    .cv-step { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; }
+    .cv-step:not(:last-child)::after {
+      content: ""; position: absolute; top: 18px; right: -16px;
+      width: 32px; height: 2px; background: var(--border);
+    }
+    .cv-step-num { width: 36px; height: 36px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 14px; font-weight: 900; display: grid; place-items: center; margin-bottom: 8px; }
+    .cv-step-text { font-size: 11px; color: var(--text2); font-weight: 700; line-height: 1.4; }
+
+    .cv-form { padding: 8px 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+
+    .cv-section-label {
+      font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text2); padding: 8px 0 2px; border-top: 1.5px solid var(--border);
+    }
+    .cv-section-label:first-child { border-top: none; }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); }
+    .form-group input, .form-group select, .form-group textarea {
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      padding: 12px 14px; font-size: 15px; color: var(--text); background: var(--surface);
+      transition: border-color 0.2s, box-shadow 0.2s; width: 100%;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,79,186,0.12);
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* Loan estimate preview */
+    .cv-estimate {
+      background: linear-gradient(135deg, var(--blue-dark), var(--blue));
+      border-radius: var(--radius); padding: 18px; color: #fff;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+    .cv-estimate.hidden { display: none; }
+    .est-item .est-label { font-size: 10px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-bottom: 2px; }
+    .est-item .est-val { font-size: 16px; font-weight: 800; }
+    .est-item .est-val.big { font-family: var(--font-display); font-size: 24px; }
+    .est-note { grid-column: 1/-1; font-size: 11px; opacity: 0.65; line-height: 1.4; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue), var(--blue-light));
+      color: #fff; font-size: 16px; font-weight: 800;
+      padding: 15px; border-radius: var(--radius-sm);
+      width: 100%; letter-spacing: 0.3px;
+      box-shadow: 0 4px 12px rgba(26,79,186,0.3);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-primary:active { transform: translateY(1px); box-shadow: 0 2px 6px rgba(26,79,186,0.2); }
+    .btn-green {
+      background: linear-gradient(135deg, var(--green-dark), var(--green));
+      color: #fff; font-size: 15px; font-weight: 800;
+      padding: 14px; border-radius: var(--radius-sm);
+      width: 100%; letter-spacing: 0.3px;
+      box-shadow: 0 4px 12px rgba(92,184,0,0.3);
+    }
+    .btn-outline { background: transparent; border: 2px solid var(--blue); color: var(--blue); font-size: 14px; font-weight: 700; padding: 12px; border-radius: var(--radius-sm); width: 100%; }
+    .btn-sm { font-size: 13px; padding: 8px 16px; border-radius: 8px; font-weight: 700; width: auto; }
+
+    /* Success screen */
+    #cv-success {
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 48px 32px; flex: 1;
+    }
+    #cv-success.active { display: flex; }
+    .success-icon { font-size: 72px; margin-bottom: 20px; animation: popIn 0.5s ease; }
+    .success-title { font-family: var(--font-display); font-size: 30px; color: var(--blue); margin-bottom: 10px; }
+    .success-msg { font-size: 14px; color: var(--text2); line-height: 1.6; margin-bottom: 28px; }
+    .success-ref { background: var(--surface2); border-radius: var(--radius-sm); padding: 14px 20px; margin-bottom: 28px; }
+    .success-ref .ref-label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .success-ref .ref-id { font-size: 16px; font-weight: 900; color: var(--blue); letter-spacing: 1px; }
+
+    /* ════════════════════════════════════════════════════════════
+       OWNER VIEW — full dashboard
+    ════════════════════════════════════════════════════════════ */
+    #owner-view { display: none; flex-direction: column; height: 100%; }
+    #owner-view.active { display: flex; }
+
+    .app-header {
+      background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 60%, var(--blue-light) 100%);
+      padding: 16px 20px 14px;
+      display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 12px rgba(13,47,126,0.3);
+    }
+    .app-header-text h1 { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
+    .app-header-text p  { font-size: 11px; color: rgba(255,255,255,0.7); letter-spacing: 1px; text-transform: uppercase; }
+    .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .btn-icon { background: rgba(255,255,255,0.15); border: none; color: #fff; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; cursor: pointer; font-size: 16px; transition: background 0.2s; }
+    .btn-icon:hover { background: rgba(255,255,255,0.25); }
+
+    /* Owner badge / exit */
+    .owner-badge {
+      font-size: 10px; background: rgba(245,166,35,0.3); color: #ffe082;
+      padding: 4px 10px; border-radius: 20px; font-weight: 800; letter-spacing: 0.5px;
+      border: 1px solid rgba(245,166,35,0.4);
+    }
+
+    .bottom-nav {
+      background: var(--surface); border-top: 1px solid var(--border);
+      display: flex; position: sticky; bottom: 0; z-index: 100;
+      box-shadow: 0 -2px 12px rgba(26,79,186,0.08);
+    }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 0; cursor: pointer; transition: all 0.2s; color: var(--text2); font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
+    .nav-item .nav-icon { font-size: 20px; }
+    .nav-item.active { color: var(--blue); }
+    .nav-item.active .nav-icon { transform: translateY(-2px); }
+
+    .page-content { flex: 1; overflow-y: auto; padding-bottom: 16px; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* Dashboard */
+    .dashboard-hero {
+      background: linear-gradient(150deg, var(--blue-dark), var(--blue), var(--blue-light));
+      padding: 24px 20px 32px; color: #fff; position: relative; overflow: hidden;
+    }
+    .dashboard-hero::before { content: ""; position: absolute; right: -30px; top: -30px; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.05); }
+    .dashboard-hero::after  { content: ""; position: absolute; right: 30px; top: 30px; width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.08); }
+    .dashboard-hero h2 { font-size: 13px; font-weight: 700; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .dashboard-hero .big-num { font-family: var(--font-display); font-size: 36px; font-weight: 400; letter-spacing: -1px; }
+    .dashboard-hero .sub { font-size: 12px; opacity: 0.7; margin-top: 4px; }
+
+    .stat-chips { display: flex; gap: 8px; padding: 16px 16px 0; flex-wrap: wrap; }
+    .stat-chip {
+      flex: 1; min-width: calc(50% - 4px);
+      background: var(--surface); border-radius: var(--radius-sm);
+      padding: 14px 16px; box-shadow: var(--shadow); border: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .stat-chip .chip-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); }
+    .stat-chip .chip-value { font-size: 22px; font-weight: 900; color: var(--blue); }
+    .stat-chip.green .chip-value { color: var(--green-dark); }
+    .stat-chip.gold  .chip-value { color: var(--gold); }
+    .stat-chip.danger .chip-value { color: var(--danger); }
+
+    .section-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 16px 10px; }
+    .section-header h3 { font-size: 15px; font-weight: 800; color: var(--text); }
+    .section-header a { font-size: 12px; color: var(--blue); font-weight: 700; cursor: pointer; }
+
+    /* Cards */
+    .card-list { display: flex; flex-direction: column; gap: 10px; padding: 0 16px; }
+    .loan-card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 16px; border: 1px solid var(--border);
+      box-shadow: var(--shadow); cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .loan-card:active { transform: scale(0.98); }
+    .loan-card-top { display: flex; align-items: center; gap: 12px; }
+    .borrower-avatar { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--blue), var(--blue-light)); color: #fff; font-size: 16px; font-weight: 900; display: grid; place-items: center; flex-shrink: 0; }
+    .loan-card-info { flex: 1; }
+    .loan-card-info .name { font-size: 14px; font-weight: 800; }
+    .loan-card-info .detail { font-size: 12px; color: var(--text2); }
+    .loan-amount { font-family: var(--font-display); font-size: 20px; color: var(--blue); }
+    .status-badge { font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .status-badge.active  { background: #e8f5e9; color: #2e7d32; }
+    .status-badge.paid    { background: #e3f2fd; color: #1565c0; }
+    .status-badge.overdue { background: #ffebee; color: #c62828; }
+    .status-badge.pending { background: #fff8e1; color: #e65100; }
+
+    .loan-card-progress { }
+    .progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text2); margin-bottom: 5px; font-weight: 600; }
+    .progress-bar { height: 6px; background: var(--surface2); border-radius: 10px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--green-light)); border-radius: 10px; transition: width 0.5s ease; }
+
+    /* Pending requests tab */
+    .request-card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 16px; border: 1.5px solid #ffe082;
+      box-shadow: 0 2px 12px rgba(245,166,35,0.12);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .request-card-top { display: flex; gap: 12px; align-items: flex-start; }
+    .req-avatar { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--gold), #f5c623); color: #fff; font-size: 16px; font-weight: 900; display: grid; place-items: center; flex-shrink: 0; }
+    .req-info .req-name { font-size: 14px; font-weight: 800; }
+    .req-info .req-detail { font-size: 12px; color: var(--text2); }
+    .req-amount { font-family: var(--font-display); font-size: 20px; color: var(--gold); margin-left: auto; }
+    .req-actions { display: flex; gap: 8px; }
+    .btn-approve { flex: 1; background: linear-gradient(135deg, var(--green-dark), var(--green)); color: #fff; font-size: 13px; font-weight: 800; padding: 10px; border-radius: 10px; }
+    .btn-decline { flex: 1; background: #ffebee; color: var(--danger); font-size: 13px; font-weight: 800; padding: 10px; border-radius: 10px; border: 1.5px solid #ffcdd2; }
+    .req-meta { font-size: 11px; color: var(--text2); background: var(--surface2); border-radius: 8px; padding: 8px 12px; }
+
+    /* Borrower card */
+    .borrower-card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 14px 16px; border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer;
+    }
+    .borrower-card .bc-name { font-size: 14px; font-weight: 800; }
+    .borrower-card .bc-detail { font-size: 12px; color: var(--text2); }
+    .bc-badge { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--blue); background: var(--surface2); padding: 4px 10px; border-radius: 20px; }
+
+    /* Loan form */
+    .loan-preview {
+      background: linear-gradient(135deg, var(--blue-dark), var(--blue));
+      border-radius: var(--radius); padding: 16px; color: #fff;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+    .loan-preview.hidden { display: none; }
+    .preview-item .label { font-size: 10px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; font-weight: 700; }
+    .preview-item .value { font-size: 16px; font-weight: 800; }
+    .preview-item .value.big { font-family: var(--font-display); font-size: 22px; }
+
+    /* Calculator */
+    .calc-result { background: linear-gradient(135deg, var(--blue-dark), var(--blue)); border-radius: var(--radius); padding: 20px; margin: 0 16px; color: #fff; }
+    .calc-result.hidden { display: none; }
+    .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    .calc-item .lbl { font-size: 10px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
+    .calc-item .val { font-size: 18px; font-weight: 900; margin-top: 2px; }
+    .calc-item .val.big { font-family: var(--font-display); font-size: 28px; }
+
+    /* Settings */
+    .config-box { margin: 16px; background: var(--surface); border-radius: var(--radius); padding: 20px; border: 1.5px solid var(--border); box-shadow: var(--shadow); }
+    .config-box h3 { font-size: 14px; font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .info-row:last-child { border-bottom: none; }
+    .info-row .label { color: var(--text2); font-weight: 600; }
+    .info-row .val { font-weight: 800; }
+
+    /* Setup banner */
+    .setup-banner { background: #fff8e1; border: 1.5px solid #ffe082; border-radius: var(--radius-sm); padding: 14px 16px; margin: 16px; display: flex; gap: 10px; align-items: flex-start; }
+    .setup-banner .icon { font-size: 20px; flex-shrink: 0; }
+    .setup-banner h4 { font-size: 13px; font-weight: 800; color: #e65100; }
+    .setup-banner p { font-size: 12px; color: #795548; margin-top: 2px; line-height: 1.4; }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(13,47,126,0.5); backdrop-filter: blur(4px);
+      z-index: 200; display: none; align-items: flex-end; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-sheet {
+      background: var(--surface); border-radius: 24px 24px 0 0;
+      padding: 24px 20px; width: 100%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto;
+      animation: slideUp 0.3s ease;
+    }
+    .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 4px; margin: 0 auto 20px; }
+    .modal-title { font-size: 18px; font-weight: 900; margin-bottom: 16px; }
+
+    .detail-header { background: linear-gradient(135deg, var(--blue-dark), var(--blue)); color: #fff; padding: 20px; }
+    .detail-header h2 { font-family: var(--font-display); font-size: 28px; }
+    .detail-header p { opacity: 0.75; font-size: 13px; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); margin: 16px; border-radius: var(--radius); overflow: hidden; }
+    .detail-cell { background: var(--surface); padding: 14px; }
+    .detail-cell .label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
+    .detail-cell .val { font-size: 16px; font-weight: 800; color: var(--text); margin-top: 2px; }
+
+    .payment-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    .payment-item:last-child { border-bottom: none; }
+    .payment-item .p-date { font-size: 12px; color: var(--text2); font-weight: 600; }
+    .payment-item .p-balance { font-size: 11px; color: var(--text2); text-align: right; }
+
+    /* Approve modal */
+    .approve-info { background: var(--surface2); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px; }
+    .approve-info .ai-name { font-size: 16px; font-weight: 900; margin-bottom: 4px; }
+    .approve-info .ai-detail { font-size: 13px; color: var(--text2); line-height: 1.5; }
+    .approve-preview { background: linear-gradient(135deg, var(--blue-dark), var(--blue)); border-radius: var(--radius); padding: 16px; color: #fff; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .approve-preview.hidden { display: none; }
+    .ap-item .ap-label { font-size: 10px; opacity: 0.7; text-transform: uppercase; font-weight: 700; margin-bottom: 2px; }
+    .ap-item .ap-val { font-size: 15px; font-weight: 800; }
+    .ap-item .ap-val.big { font-family: var(--font-display); font-size: 22px; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--text); color: #fff; padding: 12px 24px; border-radius: 30px;
+      font-size: 13px; font-weight: 700; opacity: 0; transition: all 0.3s; z-index: 9999;
+      pointer-events: none; white-space: nowrap; max-width: 90%;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.success { background: var(--green-dark); }
+    #toast.error   { background: var(--danger); }
+
+    /* Loading / empty */
+    .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; gap: 20px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-state { text-align: center; padding: 40px 24px; color: var(--text2); }
+    .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+    .empty-state p { font-size: 13px; line-height: 1.5; }
+
+    /* Notification dot */
+    .notif-dot {
+      display: inline-block; background: var(--danger); color: #fff;
+      font-size: 9px; font-weight: 900; width: 16px; height: 16px;
+      border-radius: 50%; line-height: 16px; text-align: center;
+      margin-left: 4px; vertical-align: middle;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ROLE GATE
+══════════════════════════════════════════════════════════════ -->
+<div id="role-gate">
+  <div class="gate-logo">💰</div>
+  <div class="gate-title">BIB Loans</div>
+  <div class="gate-sub">Build · Invest · Borrow</div>
+  <div class="gate-prompt">Who are you?</div>
+  <div class="gate-buttons">
+    <button class="gate-btn customer" onclick="enterAsCustomer()">
+      <span class="gb-icon">🙋</span>
+      <div class="gb-text">
+        <div class="gb-label">I want to apply</div>
+        <div class="gb-desc">Submit a loan request</div>
+      </div>
+    </button>
+    <button class="gate-btn owner" onclick="showPinOverlay()">
+      <span class="gb-icon">🔐</span>
+      <div class="gb-text">
+        <div class="gb-label">Owner / Admin</div>
+        <div class="gb-desc">Enter PIN to access dashboard</div>
+      </div>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PIN OVERLAY
+══════════════════════════════════════════════════════════════ -->
+<div id="pin-overlay" class="hidden">
+  <div class="pin-sheet">
+    <div class="pin-handle"></div>
+    <div class="pin-title">🔐 Owner Access</div>
+    <div class="pin-sub">Enter your 4-digit PIN to continue</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="pinInput('1')">1</button>
+      <button class="pin-key" onclick="pinInput('2')">2</button>
+      <button class="pin-key" onclick="pinInput('3')">3</button>
+      <button class="pin-key" onclick="pinInput('4')">4</button>
+      <button class="pin-key" onclick="pinInput('5')">5</button>
+      <button class="pin-key" onclick="pinInput('6')">6</button>
+      <button class="pin-key" onclick="pinInput('7')">7</button>
+      <button class="pin-key" onclick="pinInput('8')">8</button>
+      <button class="pin-key" onclick="pinInput('9')">9</button>
+      <div></div>
+      <button class="pin-key" onclick="pinInput('0')">0</button>
+      <button class="pin-key del" onclick="pinDelete()">⌫</button>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <button class="pin-cancel" onclick="hidePinOverlay()">Cancel</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     MAIN APP SHELL
+══════════════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- ════ CUSTOMER VIEW ════ -->
+  <div id="customer-view">
+    <header class="cv-header">
+      <div class="cv-header-icon">💰</div>
+      <div class="cv-header-text">
+        <h1>Apply for a Loan</h1>
+        <p>BIB Loans · Loans Made Simple</p>
+      </div>
+      <button class="cv-exit" onclick="exitToGate()">← Back</button>
+    </header>
+
+    <div class="cv-body">
+      <!-- Form screen -->
+      <div id="cv-form-screen">
+        <div class="cv-hero">
+          <h2>Fast, Fair Financing</h2>
+          <p>Fill out the short form below. We'll review your request and reach out to you shortly.</p>
+        </div>
+
+        <!-- How it works steps -->
+        <div class="cv-how">
+          <div class="cv-step">
+            <div class="cv-step-num">1</div>
+            <div class="cv-step-text">Fill the form</div>
+          </div>
+          <div class="cv-step">
+            <div class="cv-step-num">2</div>
+            <div class="cv-step-text">Owner reviews</div>
+          </div>
+          <div class="cv-step">
+            <div class="cv-step-num">3</div>
+            <div class="cv-step-text">Get your loan</div>
+          </div>
+        </div>
+
+        <div class="cv-form" id="cv-form">
+          <div class="cv-section-label">👤 Your Information</div>
+
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" id="req-name" placeholder="Juan dela Cruz" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Phone *</label>
+              <input type="tel" id="req-phone" placeholder="09XX-XXX-XXXX" />
+            </div>
+            <div class="form-group">
+              <label>Dept / Company</label>
+              <input type="text" id="req-dept" placeholder="e.g. HR, Sales" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Employee No. (if applicable)</label>
+            <input type="text" id="req-empno" placeholder="EMP-001" />
+          </div>
+
+          <div class="cv-section-label">💸 Loan Details</div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Amount (₱) *</label>
+              <input type="number" id="req-amount" placeholder="5000" min="500" oninput="updateCvEstimate()" />
+            </div>
+            <div class="form-group">
+              <label>Term (months) *</label>
+              <select id="req-term" onchange="updateCvEstimate()">
+                <option value="">Select</option>
+                <option value="1">1 month</option>
+                <option value="2">2 months</option>
+                <option value="3">3 months</option>
+                <option value="4">4 months</option>
+                <option value="6">6 months</option>
+                <option value="12">12 months</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="cv-estimate" class="cv-estimate hidden">
+            <div class="est-item" style="grid-column:1/-1;">
+              <div class="est-label">Monthly Payment</div>
+              <div class="est-val big" id="est-monthly">₱0.00</div>
+            </div>
+            <div class="est-item">
+              <div class="est-label">Total Interest</div>
+              <div class="est-val" id="est-interest">₱0.00</div>
+            </div>
+            <div class="est-item">
+              <div class="est-label">Total Payable</div>
+              <div class="est-val" id="est-total">₱0.00</div>
+            </div>
+            <div class="est-note">* Estimate based on 10% flat interest/month. Final terms set by owner.</div>
+          </div>
+
+          <div class="form-group">
+            <label>Purpose *</label>
+            <select id="req-purpose">
+              <option value="">Select purpose</option>
+              <option value="Emergency">Emergency / Medical</option>
+              <option value="Education">Education / Tuition</option>
+              <option value="Business">Business / Capital</option>
+              <option value="Home">Home / Repair</option>
+              <option value="Personal">Personal Needs</option>
+              <option value="Travel">Travel</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Additional Notes</label>
+            <textarea id="req-notes" rows="3" placeholder="Tell us more about your loan request..." style="resize:none;"></textarea>
+          </div>
+
+          <button class="btn-primary" onclick="submitRequest()" id="cv-submit-btn">
+            📩 Submit Loan Request
+          </button>
+
+          <div style="text-align:center; font-size:11px; color:var(--text2); line-height:1.5;">
+            By submitting, you agree to be contacted by BIB Loans regarding your application.
+          </div>
+        </div>
+      </div>
+
+      <!-- Success screen -->
+      <div id="cv-success">
+        <div class="success-icon">🎉</div>
+        <div class="success-title">Request Submitted!</div>
+        <div class="success-msg">Your loan request has been received. Our team will review it and contact you within 1-2 business days.</div>
+        <div class="success-ref">
+          <div class="ref-label">Reference Number</div>
+          <div class="ref-id" id="success-ref-id">—</div>
+        </div>
+        <button class="btn-primary" onclick="resetCustomerForm()" style="max-width:280px;">
+          Submit Another Request
+        </button>
+      </div>
+    </div>
+  </div><!-- /customer-view -->
+
+  <!-- ════ OWNER VIEW ════ -->
+  <div id="owner-view">
+
+    <header class="app-header">
+      <div style="font-size:28px;">💰</div>
+      <div class="app-header-text">
+        <h1>BIB Loans</h1>
+        <p>Owner Dashboard</p>
+      </div>
+      <div class="header-actions">
+        <span class="owner-badge">OWNER</span>
+        <button class="btn-icon" onclick="refreshAll()" title="Refresh">🔄</button>
+        <button class="btn-icon" onclick="exitToGate()" title="Exit">🚪</button>
+      </div>
+    </header>
+
+    <main class="page-content">
+
+      <!-- DASHBOARD -->
+      <section id="page-dashboard" class="page active">
+        <div class="dashboard-hero">
+          <h2>Total Receivables</h2>
+          <div class="big-num" id="dash-receivable">₱0.00</div>
+          <div class="sub" id="dash-active-count">0 active loans</div>
+        </div>
+
+        <div class="stat-chips">
+          <div class="stat-chip">
+            <span class="chip-label">Borrowers</span>
+            <span class="chip-value" id="dash-borrowers">0</span>
+          </div>
+          <div class="stat-chip green">
+            <span class="chip-label">Collected</span>
+            <span class="chip-value" id="dash-collected">₱0</span>
+          </div>
+          <div class="stat-chip gold">
+            <span class="chip-label">Active</span>
+            <span class="chip-value" id="dash-active">0</span>
+          </div>
+          <div class="stat-chip danger">
+            <span class="chip-label">Overdue</span>
+            <span class="chip-value" id="dash-overdue">0</span>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <h3>Recent Loans</h3>
+          <a onclick="ownerShowPage('loans')">See all →</a>
+        </div>
+        <div class="card-list" id="recent-loans-list">
+          <div class="empty-state"><div class="spinner"></div></div>
+        </div>
+        <div style="height:16px;"></div>
+      </section>
+
+      <!-- REQUESTS (pending loan requests from customers) -->
+      <section id="page-requests" class="page">
+        <div style="padding: 16px 16px 8px;">
+          <div style="font-size: 13px; color: var(--text2); line-height: 1.5; background: var(--surface2); border-radius: var(--radius-sm); padding: 12px 14px;">
+            📋 These are loan requests submitted by customers. Review and approve to create a loan, or decline to remove.
+          </div>
+        </div>
+        <div class="card-list" id="requests-list" style="padding-bottom: 16px;">
+          <div class="empty-state"><div class="spinner"></div></div>
+        </div>
+      </section>
+
+      <!-- ALL LOANS -->
+      <section id="page-loans" class="page">
+        <div style="padding: 12px 16px 4px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn-sm btn-outline" onclick="filterLoans('all')" id="filter-all" style="background:var(--blue);color:#fff;border-color:var(--blue);">All</button>
+          <button class="btn-sm btn-outline" onclick="filterLoans('Active')" id="filter-active">Active</button>
+          <button class="btn-sm btn-outline" onclick="filterLoans('Paid')" id="filter-paid">Paid</button>
+          <button class="btn-sm btn-outline" onclick="filterLoans('Overdue')" id="filter-overdue" style="border-color:var(--danger);color:var(--danger);">Overdue</button>
+        </div>
+        <div class="card-list" id="loans-list" style="padding-top: 12px; padding-bottom: 16px;">
+          <div class="empty-state"><div class="spinner"></div></div>
+        </div>
+      </section>
+
+      <!-- NEW LOAN -->
+      <section id="page-new-loan" class="page">
+        <div class="form-container" style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="padding: 8px 0;">
+            <h2 style="font-size: 20px; font-weight: 900; color: var(--blue);">💸 Release a Loan</h2>
+            <p style="font-size: 13px; color: var(--text2);">Fill in details to create a new loan record.</p>
+          </div>
+
+          <div class="form-group">
+            <label>Borrower *</label>
+            <select id="nl-borrower" onchange="onBorrowerChange()">
+              <option value="">— Select borrower —</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Principal (₱) *</label>
+              <input type="number" id="nl-principal" placeholder="5000" min="0" oninput="previewLoan()" />
+            </div>
+            <div class="form-group">
+              <label>Term (months) *</label>
+              <select id="nl-term" onchange="previewLoan()">
+                <option value="">Select</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="6">6</option>
+                <option value="12">12</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="loan-preview" class="loan-preview hidden">
+            <div class="preview-item" style="grid-column: 1/-1;">
+              <div class="label">Monthly Payment</div>
+              <div class="value big" id="prev-monthly">₱0.00</div>
+            </div>
+            <div class="preview-item">
+              <div class="label">Total Interest</div>
+              <div class="value" id="prev-interest">₱0.00</div>
+            </div>
+            <div class="preview-item">
+              <div class="label">Total Payable</div>
+              <div class="value" id="prev-total">₱0.00</div>
+            </div>
+            <div class="preview-item">
+              <div class="label">Due Date</div>
+              <div class="value" id="prev-due" style="font-size:13px;">—</div>
+            </div>
+            <div class="preview-item">
+              <div class="label">Rate</div>
+              <div class="value">10% × <span id="prev-term">1</span>mo</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Date Released</label>
+            <input type="date" id="nl-date" />
+          </div>
+          <div class="form-group">
+            <label>Purpose</label>
+            <input type="text" id="nl-purpose" placeholder="Emergency, business, etc." />
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <textarea id="nl-notes" rows="2" placeholder="Optional" style="resize:none;"></textarea>
+          </div>
+
+          <button class="btn-green" onclick="submitLoan()">✅ Release Loan</button>
+        </div>
+      </section>
+
+      <!-- BORROWERS -->
+      <section id="page-borrowers" class="page">
+        <div style="padding: 12px 16px;">
+          <button class="btn-primary" onclick="openModal('modal-add-borrower')">+ Add Borrower</button>
+        </div>
+        <div class="card-list" id="borrowers-list" style="padding-bottom: 16px;">
+          <div class="empty-state"><div class="spinner"></div></div>
+        </div>
+      </section>
+
+      <!-- CALCULATOR -->
+      <section id="page-calculator" class="page">
+        <div style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="text-align:center; padding: 8px 0;">
+            <div style="font-size: 28px; margin-bottom: 4px;">🧮</div>
+            <h2 style="font-size: 20px; font-weight: 900; color: var(--blue);">Loan Calculator</h2>
+            <p style="font-size: 13px; color: var(--text2);">10% flat interest per month</p>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Principal (₱)</label>
+              <input type="number" id="calc-principal" placeholder="5000" oninput="calcLoan()" />
+            </div>
+            <div class="form-group">
+              <label>Term (months)</label>
+              <input type="number" id="calc-term" placeholder="3" min="1" max="24" oninput="calcLoan()" />
+            </div>
+          </div>
+        </div>
+        <div id="calc-result" class="calc-result hidden">
+          <div style="font-size: 12px; opacity: 0.8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Loan Summary</div>
+          <div class="calc-grid">
+            <div class="calc-item" style="grid-column: 1/-1;">
+              <div class="lbl">Monthly Payment</div>
+              <div class="val big" id="c-monthly">₱0.00</div>
+            </div>
+            <div class="calc-item"><div class="lbl">Principal</div><div class="val" id="c-principal">₱0.00</div></div>
+            <div class="calc-item"><div class="lbl">Total Interest</div><div class="val" id="c-interest">₱0.00</div></div>
+            <div class="calc-item"><div class="lbl">Total Payable</div><div class="val" id="c-total">₱0.00</div></div>
+            <div class="calc-item"><div class="lbl">Effective Rate</div><div class="val" id="c-rate">0%</div></div>
+          </div>
+        </div>
+        <div style="padding: 16px;">
+          <div style="background: var(--surface2); border-radius: var(--radius); padding: 16px; font-size: 12px; color: var(--text2); line-height: 1.6;">
+            <strong style="color: var(--text);">Formula:</strong><br/>
+            Interest = Principal × 10% × Months<br/>
+            Monthly = (Principal + Interest) ÷ Months
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="page-settings" class="page">
+        <div id="setup-banner" class="setup-banner">
+          <div class="icon">⚠️</div>
+          <div>
+            <h4>Setup Required</h4>
+            <p>Enter your Google Apps Script URL to connect to the spreadsheet database.</p>
+          </div>
+        </div>
+
+        <div class="config-box">
+          <h3>🔗 Backend Connection</h3>
+          <div class="form-group">
+            <label>Google Apps Script URL</label>
+            <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" />
+          </div>
+          <div style="margin-top: 10px; display: flex; gap: 8px;">
+            <button class="btn-primary btn-sm" onclick="saveGasUrl()">Save URL</button>
+            <button class="btn-outline btn-sm" onclick="testConnection()">Test</button>
+          </div>
+        </div>
+
+        <div class="config-box">
+          <h3>🔐 Owner PIN</h3>
+          <p style="font-size: 12px; color: var(--text2); margin-bottom: 12px; line-height: 1.5;">
+            Change the PIN used to access the owner dashboard. Default: <strong>1234</strong>
+          </p>
+          <div class="form-row">
+            <div class="form-group">
+              <label>New PIN</label>
+              <input type="password" id="new-pin" placeholder="4 digits" maxlength="4" inputmode="numeric" />
+            </div>
+            <div class="form-group">
+              <label>Confirm PIN</label>
+              <input type="password" id="confirm-pin" placeholder="4 digits" maxlength="4" inputmode="numeric" />
+            </div>
+          </div>
+          <button class="btn-outline btn-sm" style="margin-top: 10px;" onclick="changePin()">Update PIN</button>
+        </div>
+
+        <div class="config-box">
+          <h3>📊 App Info</h3>
+          <div class="info-row"><span class="label">App Name</span><span class="val">BIB Loans</span></div>
+          <div class="info-row"><span class="label">Version</span><span class="val">2.0.0</span></div>
+          <div class="info-row"><span class="label">Interest Rate</span><span class="val">10% / month (flat)</span></div>
+          <div class="info-row"><span class="label">Currency</span><span class="val">PHP (₱)</span></div>
+          <div class="info-row"><span class="label">Timezone</span><span class="val">Asia/Manila</span></div>
+        </div>
+
+        <div class="config-box">
+          <h3>⚡ Quick Actions</h3>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="btn-outline" style="text-align:left; padding: 12px 14px;" onclick="clearLocalData()">🗑️ Clear Local Cache</button>
+            <button class="btn-outline" style="text-align:left; padding: 12px 14px;" onclick="refreshAll()">🔄 Refresh All Data</button>
+          </div>
+        </div>
+
+        <div class="config-box">
+          <h3>🗄️ Google Sheet Setup</h3>
+          <p style="font-size: 12px; color: var(--text2); line-height: 1.6; margin-bottom: 12px;">
+            1. Open your Google Sheet → Extensions → Apps Script<br/>
+            2. Paste the <strong>code.gs</strong> contents<br/>
+            3. Replace <code style="background: var(--surface2); padding: 1px 5px; border-radius: 4px;">YOUR_SPREADSHEET_ID_HERE</code><br/>
+            4. Deploy as Web App → Execute as: Me → Anyone<br/>
+            5. Copy the URL and paste above
+          </p>
+        </div>
+        <div style="height: 20px;"></div>
+      </section>
+
+    </main>
+
+    <!-- Owner Bottom Nav -->
+    <nav class="bottom-nav">
+      <div class="nav-item active" onclick="ownerShowPage('dashboard')" id="nav-dashboard">
+        <span class="nav-icon">🏠</span><span>Home</span>
+      </div>
+      <div class="nav-item" onclick="ownerShowPage('requests')" id="nav-requests">
+        <span class="nav-icon">📋</span><span>Requests<span class="notif-dot" id="req-badge" style="display:none;">0</span></span>
+      </div>
+      <div class="nav-item" onclick="ownerShowPage('loans')" id="nav-loans">
+        <span class="nav-icon">💸</span><span>Loans</span>
+      </div>
+      <div class="nav-item" onclick="ownerShowPage('new-loan')" id="nav-new-loan">
+        <span class="nav-icon">➕</span><span>New</span>
+      </div>
+      <div class="nav-item" onclick="ownerShowPage('borrowers')" id="nav-borrowers">
+        <span class="nav-icon">👥</span><span>People</span>
+      </div>
+      <div class="nav-item" onclick="ownerShowPage('settings')" id="nav-settings">
+        <span class="nav-icon">⚙️</span><span>Settings</span>
+      </div>
+    </nav>
+
+  </div><!-- /owner-view -->
+
+</div><!-- /app -->
+
+<!-- ═══════════ MODALS ═══════════ -->
+
+<!-- Add Borrower -->
+<div class="modal-overlay" id="modal-add-borrower">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">👤 Add Borrower</div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="b-name" placeholder="Juan dela Cruz" /></div>
+      <div class="form-row">
+        <div class="form-group"><label>Department</label><input type="text" id="b-dept" placeholder="HR, Finance..." /></div>
+        <div class="form-group"><label>Employee No.</label><input type="text" id="b-empno" placeholder="EMP-001" /></div>
+      </div>
+      <div class="form-group"><label>Phone</label><input type="tel" id="b-phone" placeholder="09XX-XXX-XXXX" /></div>
+      <div class="form-group"><label>Notes</label><textarea id="b-notes" rows="2" placeholder="Optional..." style="resize:none;"></textarea></div>
+      <button class="btn-primary" onclick="submitBorrower()">✅ Save Borrower</button>
+      <button class="btn-outline" onclick="closeModal('modal-add-borrower')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Record Payment -->
+<div class="modal-overlay" id="modal-add-payment">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💰 Record Payment</div>
+    <div id="payment-loan-info" style="background: var(--surface2); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px; font-size: 13px;">
+      <div style="font-weight: 800;" id="pay-borrower-name">—</div>
+      <div style="color: var(--text2);">Balance: <strong id="pay-balance" style="color: var(--blue);">₱0.00</strong></div>
+      <div style="color: var(--text2); font-size: 11px; margin-top: 4px;">Loan ID: <span id="pay-loan-id">—</span></div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="form-group"><label>Amount (₱) *</label><input type="number" id="pay-amount" placeholder="Enter amount" min="0" /></div>
+      <div class="form-group"><label>Date</label><input type="date" id="pay-date" /></div>
+      <div class="form-group"><label>Notes</label><input type="text" id="pay-notes" placeholder="Optional" /></div>
+      <button class="btn-green" onclick="submitPayment()">✅ Record Payment</button>
+      <button class="btn-outline" onclick="closeModal('modal-add-payment')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loan Detail -->
+<div class="modal-overlay" id="modal-loan-detail">
+  <div class="modal-sheet" id="loan-detail-content">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Loan Details</div>
+    <div id="loan-detail-body">Loading...</div>
+  </div>
+</div>
+
+<!-- Approve Request Modal -->
+<div class="modal-overlay" id="modal-approve-request">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✅ Approve Loan Request</div>
+    <div class="approve-info" id="approve-request-info">
+      <div class="ai-name" id="approve-req-name">—</div>
+      <div class="ai-detail" id="approve-req-detail">—</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Principal (₱) *</label>
+          <input type="number" id="approve-principal" placeholder="Requested amount" oninput="previewApproval()" />
+        </div>
+        <div class="form-group">
+          <label>Term (months) *</label>
+          <select id="approve-term" onchange="previewApproval()">
+            <option value="">Select</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="6">6</option>
+            <option value="12">12</option>
+          </select>
+        </div>
+      </div>
+      <div id="approve-preview" class="approve-preview hidden">
+        <div class="ap-item" style="grid-column:1/-1;"><div class="ap-label">Monthly Payment</div><div class="ap-val big" id="ap-monthly">₱0</div></div>
+        <div class="ap-item"><div class="ap-label">Total Interest</div><div class="ap-val" id="ap-interest">₱0</div></div>
+        <div class="ap-item"><div class="ap-label">Total Payable</div><div class="ap-val" id="ap-total">₱0</div></div>
+      </div>
+      <div class="form-group">
+        <label>Date Released</label>
+        <input type="date" id="approve-date" />
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" id="approve-notes" placeholder="Optional" />
+      </div>
+      <button class="btn-green" onclick="finalizeApproval()">✅ Approve & Release Loan</button>
+      <button class="btn-outline" onclick="closeModal('modal-approve-request')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+<script>
+// ── CONSTANTS ────────────────────────────────────────────────────
+const INTEREST_RATE = 0.10;
+const DEFAULT_PIN   = '1234';
+
+// ── STATE ────────────────────────────────────────────────────────
+const STATE = {
+  gasUrl:    localStorage.getItem('bib_gas_url') || '',
+  borrowers: JSON.parse(localStorage.getItem('bib_borrowers') || '[]'),
+  loans:     JSON.parse(localStorage.getItem('bib_loans') || '[]'),
+  requests:  JSON.parse(localStorage.getItem('bib_requests') || '[]'),
+  activeLoan: null,
+  activeRequest: null,
+  loanFilter: 'all',
+  ownerPin:  localStorage.getItem('bib_owner_pin') || DEFAULT_PIN
+};
+
+// ── PIN LOGIC ────────────────────────────────────────────────────
+let pinBuffer = '';
+
+function showPinOverlay() {
+  pinBuffer = '';
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('pin-overlay').classList.remove('hidden');
+}
+function hidePinOverlay() {
+  document.getElementById('pin-overlay').classList.add('hidden');
+  pinBuffer = '';
+  updatePinDots();
+}
+function pinInput(digit) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += digit;
+  updatePinDots();
+  if (pinBuffer.length === 4) setTimeout(checkPin, 150);
+}
+function pinDelete() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots();
+}
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('pd' + i).classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+function checkPin() {
+  if (pinBuffer === STATE.ownerPin) {
+    hidePinOverlay();
+    enterAsOwner();
+  } else {
+    document.getElementById('pin-error').textContent = '❌ Wrong PIN. Try again.';
+    pinBuffer = '';
+    updatePinDots();
+  }
+}
+
+// ── ROLE ROUTING ─────────────────────────────────────────────────
+function enterAsCustomer() {
+  document.getElementById('role-gate').classList.add('hidden');
+  document.getElementById('customer-view').classList.add('active');
+  document.getElementById('owner-view').classList.remove('active');
+}
+
+function enterAsOwner() {
+  document.getElementById('role-gate').classList.add('hidden');
+  document.getElementById('owner-view').classList.add('active');
+  document.getElementById('customer-view').classList.remove('active');
+  ownerShowPage('dashboard');
+  refreshAll();
+}
+
+function exitToGate() {
+  document.getElementById('role-gate').classList.remove('hidden');
+  document.getElementById('owner-view').classList.remove('active');
+  document.getElementById('customer-view').classList.remove('active');
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('nl-date').value     = today;
+  document.getElementById('pay-date').value    = today;
+  document.getElementById('approve-date').value = today;
+
+  if (STATE.gasUrl) {
+    document.getElementById('gas-url-input').value = STATE.gasUrl;
+    document.getElementById('setup-banner').style.display = 'none';
+  }
+
+  // PWA SW
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
+      .then(reg => console.log('[BIB] SW registered, scope:', reg.scope))
+      .catch(err => console.warn('[BIB] SW registration failed:', err));
+  }
+});
+
+// ── API ──────────────────────────────────────────────────────────
+async function callGAS(action, data = {}) {
+  if (!STATE.gasUrl) throw new Error('No backend URL configured. Go to Settings.');
+  const res = await fetch(STATE.gasUrl, { method: 'POST', body: JSON.stringify({ action, data }) });
+  const result = await res.json();
+  if (!result.success) throw new Error(result.data?.error || 'Unknown error');
+  return result.data;
+}
+
+// ── OWNER NAVIGATION ─────────────────────────────────────────────
+function ownerShowPage(name) {
+  document.querySelectorAll('#owner-view .page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name)?.classList.add('active');
+  document.getElementById('nav-' + name)?.classList.add('active');
+  if (name === 'loans')     renderLoans();
+  if (name === 'borrowers') renderBorrowers();
+  if (name === 'new-loan')  populateBorrowerDropdown();
+  if (name === 'requests')  renderRequests();
+}
+
+// ── REFRESH ──────────────────────────────────────────────────────
+async function refreshAll() {
+  if (!STATE.gasUrl) { renderDashboard(); return; }
+  try {
+    const [borrowers, loans, dash] = await Promise.all([
+      callGAS('getBorrowers'),
+      callGAS('getLoans'),
+      callGAS('getDashboard')
+    ]);
+    STATE.borrowers = borrowers;
+    STATE.loans     = loans;
+    localStorage.setItem('bib_borrowers', JSON.stringify(borrowers));
+    localStorage.setItem('bib_loans', JSON.stringify(loans));
+    renderDashboard(dash);
+    renderLoans();
+    renderBorrowers();
+    updateReqBadge();
+  } catch (e) {
+    renderDashboard();
+    toast('Using cached data. ' + e.message, 'error');
+  }
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────────
+function renderDashboard(dash) {
+  const loans   = STATE.loans;
+  const active  = loans.filter(l => l.status === 'Active');
+  const overdue = active.filter(l => new Date(l.dueDate) < new Date());
+  const totalReceivable = active.reduce((s, l) => s + (l.totalPayable || 0), 0);
+
+  document.getElementById('dash-receivable').textContent = formatMoney(dash?.totalReceivable ?? totalReceivable);
+  document.getElementById('dash-active-count').textContent = (dash?.activeLoans ?? active.length) + ' active loan' + (active.length !== 1 ? 's' : '');
+  document.getElementById('dash-borrowers').textContent = dash?.totalBorrowers ?? STATE.borrowers.length;
+  document.getElementById('dash-collected').textContent = formatMoneyShort(dash?.totalCollected ?? 0);
+  document.getElementById('dash-active').textContent   = dash?.activeLoans ?? active.length;
+  document.getElementById('dash-overdue').textContent  = dash?.overdueLoans ?? overdue.length;
+
+  const recent = (dash?.recentLoans ?? [...loans].reverse().slice(0, 5));
+  const container = document.getElementById('recent-loans-list');
+  if (!recent.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">💸</div><h3>No loans yet</h3><p>Tap + New to release a loan.</p></div>';
+    return;
+  }
+  container.innerHTML = recent.map(l => loanCardHTML(l)).join('');
+}
+
+// ── LOAN CARDS ───────────────────────────────────────────────────
+function loanCardHTML(l) {
+  const progress = l.totalPayable > 0 ? Math.min(100, ((l.totalPayable - (l.balance || l.totalPayable)) / l.totalPayable * 100)).toFixed(0) : 0;
+  const initials = (l.borrowerName || '?').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+  const isOverdue = l.status === 'Active' && new Date(l.dueDate) < new Date();
+  const badgeClass = l.status === 'Paid' ? 'paid' : (isOverdue ? 'overdue' : 'active');
+  const badgeText  = l.status === 'Paid' ? 'Paid' : (isOverdue ? 'Overdue' : 'Active');
+  return `
+    <div class="loan-card" onclick="viewLoanDetail('${l.loanId}')">
+      <div class="loan-card-top">
+        <div class="borrower-avatar">${initials}</div>
+        <div class="loan-card-info">
+          <div class="name">${l.borrowerName || 'Unknown'}</div>
+          <div class="detail">${l.purpose || ''} · ${l.term || 0}mo · Due ${formatDate(l.dueDate)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="loan-amount">${formatMoney(l.principal)}</div>
+          <span class="status-badge ${badgeClass}">${badgeText}</span>
+        </div>
+      </div>
+      <div class="loan-card-progress">
+        <div class="progress-label">
+          <span>Paid ${progress}%</span>
+          <span>Total ${formatMoney(l.totalPayable)}</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
+      </div>
+    </div>`;
+}
+
+function renderLoans() {
+  const container = document.getElementById('loans-list');
+  let loans = STATE.loans;
+  if (STATE.loanFilter === 'Active') loans = loans.filter(l => l.status === 'Active' && new Date(l.dueDate) >= new Date());
+  else if (STATE.loanFilter === 'Paid') loans = loans.filter(l => l.status === 'Paid');
+  else if (STATE.loanFilter === 'Overdue') loans = loans.filter(l => l.status === 'Active' && new Date(l.dueDate) < new Date());
+  loans = [...loans].reverse();
+  if (!loans.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">💸</div><h3>No loans</h3><p>No loans match this filter.</p></div>';
+    return;
+  }
+  container.innerHTML = loans.map(l => loanCardHTML(l)).join('');
+}
+
+function filterLoans(f) {
+  STATE.loanFilter = f;
+  ['all','Active','Paid','Overdue'].forEach(x => {
+    const btn = document.getElementById('filter-' + x.toLowerCase());
+    if (btn) { btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; }
+  });
+  const active = document.getElementById('filter-' + f.toLowerCase());
+  if (active) { active.style.background = 'var(--blue)'; active.style.color = '#fff'; active.style.borderColor = 'var(--blue)'; }
+  renderLoans();
+}
+
+// ── LOAN DETAIL ──────────────────────────────────────────────────
+async function viewLoanDetail(loanId) {
+  openModal('modal-loan-detail');
+  const body = document.getElementById('loan-detail-body');
+  body.innerHTML = '<div class="loading-screen"><div class="spinner"></div></div>';
+  try {
+    const loan = await callGAS('getLoanDetail', { loanId });
+    STATE.activeLoan = loan;
+    body.innerHTML = `
+      <div class="detail-header">
+        <h2>${formatMoney(loan.principal)}</h2>
+        <p>${loan.borrowerName} · ${loan.purpose || 'Loan'}</p>
+      </div>
+      <div class="detail-grid">
+        ${detailCell('Monthly', formatMoney(loan.monthlyPayment))}
+        ${detailCell('Total Payable', formatMoney(loan.totalPayable))}
+        ${detailCell('Balance', formatMoney(loan.balance ?? loan.totalPayable))}
+        ${detailCell('Total Paid', formatMoney(loan.totalPaid ?? 0))}
+        ${detailCell('Released', formatDate(loan.dateReleased))}
+        ${detailCell('Due Date', formatDate(loan.dueDate))}
+        ${detailCell('Status', loan.status)}
+        ${detailCell('Term', loan.term + ' months')}
+      </div>
+      ${loan.status !== 'Paid' ? `<div style="padding:0 16px 16px;"><button class="btn-green" onclick="openPaymentModal('${loan.loanId}','${loan.borrowerName}',${loan.balance ?? loan.totalPayable})">💰 Record Payment</button></div>` : ''}
+      <div style="padding: 0 16px 16px;">
+        <div style="font-size:13px; font-weight:800; margin-bottom:8px; color:var(--text);">Payment History (${loan.payments?.length || 0})</div>
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden;">
+          ${!loan.payments?.length ? '<div style="padding:20px; text-align:center; color:var(--text2); font-size:13px;">No payments yet</div>' :
+            loan.payments.map(p => `
+              <div class="payment-item">
+                <div><div style="font-weight:800; font-size:14px; color:var(--green-dark);">${formatMoney(p.amount)}</div><div class="p-date">${formatDate(p.date)}</div></div>
+                <div class="p-balance">Balance after<br/><strong>${formatMoney(p.runningBalance)}</strong></div>
+              </div>`).join('')}
+        </div>
+      </div>`;
+  } catch (e) {
+    const loan = STATE.loans.find(l => l.loanId === loanId);
+    if (loan) {
+      STATE.activeLoan = { ...loan, borrowerId: '' };
+      body.innerHTML = `<div style="padding:16px; font-size:14px; color:var(--text);">
+        <strong>${loan.borrowerName}</strong><br/>
+        Principal: ${formatMoney(loan.principal)}<br/>
+        Total Payable: ${formatMoney(loan.totalPayable)}<br/>
+        Monthly: ${formatMoney(loan.monthlyPayment)}<br/>
+        Due: ${formatDate(loan.dueDate)}<br/>
+        Status: ${loan.status}
+      </div>
+      ${loan.status !== 'Paid' ? `<div style="padding:0 16px 16px;"><button class="btn-green" onclick="openPaymentModal('${loan.loanId}','${loan.borrowerName}',${loan.totalPayable})">💰 Record Payment</button></div>` : ''}`;
+    } else {
+      body.innerHTML = '<div style="padding:20px; color:var(--danger);">Could not load: ' + e.message + '</div>';
+    }
+  }
+}
+
+function detailCell(label, value) {
+  return `<div class="detail-cell"><div class="label">${label}</div><div class="val">${value}</div></div>`;
+}
+
+// ── BORROWERS ────────────────────────────────────────────────────
+function renderBorrowers() {
+  const container = document.getElementById('borrowers-list');
+  if (!STATE.borrowers.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">👥</div><h3>No borrowers yet</h3><p>Add borrowers first before releasing loans.</p></div>';
+    return;
+  }
+  container.innerHTML = STATE.borrowers.map(b => {
+    const bLoans  = STATE.loans.filter(l => l.borrowerId === b.id);
+    const active  = bLoans.filter(l => l.status === 'Active').length;
+    const initials = (b.name || '?').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    return `<div class="borrower-card">
+      <div class="borrower-avatar">${initials}</div>
+      <div>
+        <div class="bc-name">${b.name}</div>
+        <div class="bc-detail">${b.phone || '—'} · ${b.department || 'No dept'}</div>
+      </div>
+      <div class="bc-badge">${active} active</div>
+    </div>`;
+  }).join('');
+}
+
+function populateBorrowerDropdown() {
+  const sel = document.getElementById('nl-borrower');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select borrower —</option>' +
+    STATE.borrowers.map(b => `<option value="${b.id}" data-name="${b.name}">${b.name}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+async function submitBorrower() {
+  const name = document.getElementById('b-name').value.trim();
+  if (!name) return toast('Name is required.', 'error');
+  try {
+    await callGAS('addBorrower', {
+      name, department: document.getElementById('b-dept').value,
+      employeeNo: document.getElementById('b-empno').value,
+      phone: document.getElementById('b-phone').value,
+      notes: document.getElementById('b-notes').value
+    });
+    toast('Borrower added!', 'success');
+    closeModal('modal-add-borrower');
+    ['b-name','b-dept','b-empno','b-phone','b-notes'].forEach(id => document.getElementById(id).value = '');
+    await refreshAll();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── NEW LOAN ──────────────────────────────────────────────────────
+function onBorrowerChange() { previewLoan(); }
+
+function previewLoan() {
+  const principal = parseFloat(document.getElementById('nl-principal').value) || 0;
+  const term      = parseInt(document.getElementById('nl-term').value) || 0;
+  const preview   = document.getElementById('loan-preview');
+  if (!principal || !term) { preview.classList.add('hidden'); return; }
+  preview.classList.remove('hidden');
+  const interest = principal * INTEREST_RATE * term;
+  const total    = principal + interest;
+  const monthly  = total / term;
+  const release  = new Date(document.getElementById('nl-date').value || new Date());
+  const due      = new Date(release); due.setMonth(due.getMonth() + term);
+  document.getElementById('prev-monthly').textContent  = formatMoney(monthly);
+  document.getElementById('prev-interest').textContent = formatMoney(interest);
+  document.getElementById('prev-total').textContent    = formatMoney(total);
+  document.getElementById('prev-due').textContent      = formatDate(due.toISOString().split('T')[0]);
+  document.getElementById('prev-term').textContent     = term;
+}
+
+async function submitLoan() {
+  const borrowerId = document.getElementById('nl-borrower').value;
+  const principal  = parseFloat(document.getElementById('nl-principal').value) || 0;
+  const term       = parseInt(document.getElementById('nl-term').value) || 0;
+  if (!borrowerId) return toast('Select a borrower.', 'error');
+  if (!principal)  return toast('Enter principal amount.', 'error');
+  if (!term)       return toast('Select term.', 'error');
+  const sel          = document.getElementById('nl-borrower');
+  const borrowerName = sel.options[sel.selectedIndex]?.dataset.name || '';
+  try {
+    const result = await callGAS('addLoan', {
+      borrowerId, borrowerName, principal, term,
+      dateReleased: document.getElementById('nl-date').value,
+      purpose: document.getElementById('nl-purpose').value,
+      notes:   document.getElementById('nl-notes').value
+    });
+    toast(`Loan released! Monthly: ${formatMoney(result.monthlyPayment)}`, 'success');
+    ['nl-principal','nl-purpose','nl-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('nl-term').value = '';
+    document.getElementById('loan-preview').classList.add('hidden');
+    document.getElementById('nl-borrower').value = '';
+    await refreshAll();
+    ownerShowPage('loans');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── PAYMENT ───────────────────────────────────────────────────────
+function openPaymentModal(loanId, borrowerName, balance) {
+  document.getElementById('pay-loan-id').textContent       = loanId;
+  document.getElementById('pay-borrower-name').textContent = borrowerName;
+  document.getElementById('pay-balance').textContent       = formatMoney(balance);
+  document.getElementById('pay-amount').value              = '';
+  document.getElementById('pay-notes').value               = '';
+  STATE.activeLoan = STATE.activeLoan || { loanId, borrowerId: '', balance };
+  openModal('modal-add-payment');
+}
+
+async function submitPayment() {
+  const amount = parseFloat(document.getElementById('pay-amount').value);
+  if (!amount || amount <= 0) return toast('Enter a valid amount.', 'error');
+  const loan = STATE.activeLoan;
+  if (!loan) return toast('No loan selected.', 'error');
+  try {
+    const result = await callGAS('addPayment', {
+      loanId: loan.loanId, borrowerId: loan.borrowerId || '',
+      amount, date: document.getElementById('pay-date').value,
+      notes: document.getElementById('pay-notes').value
+    });
+    toast('Payment recorded! Balance: ' + formatMoney(result.runningBalance), 'success');
+    closeModal('modal-add-payment');
+    closeModal('modal-loan-detail');
+    await refreshAll();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── CALCULATOR ────────────────────────────────────────────────────
+function calcLoan() {
+  const principal = parseFloat(document.getElementById('calc-principal').value) || 0;
+  const term      = parseInt(document.getElementById('calc-term').value) || 0;
+  const result    = document.getElementById('calc-result');
+  if (!principal || !term) { result.classList.add('hidden'); return; }
+  result.classList.remove('hidden');
+  const interest = principal * INTEREST_RATE * term;
+  const total    = principal + interest;
+  const monthly  = total / term;
+  document.getElementById('c-monthly').textContent   = formatMoney(monthly);
+  document.getElementById('c-principal').textContent = formatMoney(principal);
+  document.getElementById('c-interest').textContent  = formatMoney(interest);
+  document.getElementById('c-total').textContent     = formatMoney(total);
+  document.getElementById('c-rate').textContent      = (interest / principal * 100).toFixed(0) + `% total (${term}mo)`;
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────
+function saveGasUrl() {
+  const url = document.getElementById('gas-url-input').value.trim();
+  if (!url || !url.startsWith('https://')) return toast('Enter a valid HTTPS URL.', 'error');
+  STATE.gasUrl = url;
+  localStorage.setItem('bib_gas_url', url);
+  document.getElementById('setup-banner').style.display = 'none';
+  toast('URL saved!', 'success');
+  refreshAll();
+}
+
+async function testConnection() {
+  try {
+    const result = await callGAS('getDashboard');
+    toast('✅ Connected! ' + result.totalBorrowers + ' borrowers found.', 'success');
+  } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+function changePin() {
+  const np = document.getElementById('new-pin').value.trim();
+  const cp = document.getElementById('confirm-pin').value.trim();
+  if (np.length !== 4 || !/^\d{4}$/.test(np)) return toast('PIN must be 4 digits.', 'error');
+  if (np !== cp) return toast('PINs do not match.', 'error');
+  STATE.ownerPin = np;
+  localStorage.setItem('bib_owner_pin', np);
+  document.getElementById('new-pin').value = '';
+  document.getElementById('confirm-pin').value = '';
+  toast('PIN updated!', 'success');
+}
+
+function clearLocalData() {
+  localStorage.removeItem('bib_borrowers');
+  localStorage.removeItem('bib_loans');
+  STATE.borrowers = [];
+  STATE.loans     = [];
+  toast('Local cache cleared.');
+  renderDashboard();
+}
+
+// ══════════════════════════════════════════════════════════
+// CUSTOMER REQUEST FLOW
+// ══════════════════════════════════════════════════════════
+
+// Estimate preview for customer
+function updateCvEstimate() {
+  const principal = parseFloat(document.getElementById('req-amount').value) || 0;
+  const term      = parseInt(document.getElementById('req-term').value) || 0;
+  const box       = document.getElementById('cv-estimate');
+  if (!principal || !term) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  const interest = principal * INTEREST_RATE * term;
+  const total    = principal + interest;
+  const monthly  = total / term;
+  document.getElementById('est-monthly').textContent  = formatMoney(monthly);
+  document.getElementById('est-interest').textContent = formatMoney(interest);
+  document.getElementById('est-total').textContent    = formatMoney(total);
+}
+
+// Generate a reference ID for customer requests
+function generateRefId() {
+  return 'REQ-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random()*9000+1000);
+}
+
+async function submitRequest() {
+  const name    = document.getElementById('req-name').value.trim();
+  const phone   = document.getElementById('req-phone').value.trim();
+  const amount  = parseFloat(document.getElementById('req-amount').value) || 0;
+  const term    = parseInt(document.getElementById('req-term').value) || 0;
+  const purpose = document.getElementById('req-purpose').value;
+
+  if (!name)    return toast('Please enter your full name.', 'error');
+  if (!phone)   return toast('Please enter your phone number.', 'error');
+  if (!amount)  return toast('Please enter the loan amount.', 'error');
+  if (!term)    return toast('Please select a loan term.', 'error');
+  if (!purpose) return toast('Please select a purpose.', 'error');
+
+  const btn = document.getElementById('cv-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  const refId = generateRefId();
+  const request = {
+    refId, name, phone,
+    dept:    document.getElementById('req-dept').value.trim(),
+    empNo:   document.getElementById('req-empno').value.trim(),
+    amount, term, purpose,
+    notes:   document.getElementById('req-notes').value.trim(),
+    date:    new Date().toISOString(),
+    status:  'Pending'
+  };
+
+  // Save request locally (acts as the pending queue visible to owner)
+  const requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
+  requests.push(request);
+  localStorage.setItem('bib_requests', JSON.stringify(requests));
+  STATE.requests = requests;
+
+  // Also try to send to GAS if configured
+  if (STATE.gasUrl) {
+    try {
+      await callGAS('addLoanRequest', request);
+    } catch (_) { /* fail silently — localStorage is source of truth for requests */ }
+  }
+
+  btn.disabled = false;
+  btn.textContent = '📩 Submit Loan Request';
+
+  // Show success
+  document.getElementById('success-ref-id').textContent = refId;
+  document.getElementById('cv-form-screen').style.display = 'none';
+  document.getElementById('cv-success').classList.add('active');
+}
+
+function resetCustomerForm() {
+  document.getElementById('cv-form-screen').style.display = '';
+  document.getElementById('cv-success').classList.remove('active');
+  ['req-name','req-phone','req-dept','req-empno','req-notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('req-amount').value  = '';
+  document.getElementById('req-term').value    = '';
+  document.getElementById('req-purpose').value = '';
+  document.getElementById('cv-estimate').classList.add('hidden');
+}
+
+// ── REQUESTS (Owner side) ─────────────────────────────────────────
+function renderRequests() {
+  STATE.requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
+  const pending   = STATE.requests.filter(r => r.status === 'Pending');
+  const container = document.getElementById('requests-list');
+  updateReqBadge();
+
+  if (!pending.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><h3>No pending requests</h3><p>Customer requests will appear here for your review.</p></div>';
+    return;
+  }
+  container.innerHTML = pending.map(r => {
+    const initials = r.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    const interest = r.amount * INTEREST_RATE * r.term;
+    const total    = r.amount + interest;
+    return `<div class="request-card">
+      <div class="request-card-top">
+        <div class="req-avatar">${initials}</div>
+        <div class="req-info" style="flex:1;">
+          <div class="req-name">${r.name}</div>
+          <div class="req-detail">${r.purpose} · ${r.term} month${r.term > 1 ? 's' : ''}</div>
+          <div class="req-detail">${r.phone}</div>
+        </div>
+        <div class="req-amount">${formatMoney(r.amount)}</div>
+      </div>
+      <div class="req-meta">
+        Est. monthly: <strong>${formatMoney(total/r.term)}</strong> · Total payable: <strong>${formatMoney(total)}</strong>
+        ${r.dept ? ' · ' + r.dept : ''}${r.notes ? '<br/>Notes: ' + r.notes : ''}
+        <br/><span style="color:var(--text2);">Ref: ${r.refId} · ${formatDate(r.date)}</span>
+      </div>
+      <div class="req-actions">
+        <button class="btn-approve" onclick="openApproveModal('${r.refId}')">✅ Approve</button>
+        <button class="btn-decline" onclick="declineRequest('${r.refId}')">✗ Decline</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateReqBadge() {
+  const pending = STATE.requests.filter(r => r.status === 'Pending').length;
+  const badge   = document.getElementById('req-badge');
+  if (pending > 0) {
+    badge.style.display = 'inline-block';
+    badge.textContent   = pending;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function openApproveModal(refId) {
+  const req = STATE.requests.find(r => r.refId === refId);
+  if (!req) return;
+  STATE.activeRequest = req;
+  document.getElementById('approve-req-name').textContent   = req.name;
+  document.getElementById('approve-req-detail').textContent = `₱${req.amount.toLocaleString()} · ${req.term} month${req.term > 1 ? 's' : ''} · ${req.purpose}${req.phone ? ' · ' + req.phone : ''}`;
+  document.getElementById('approve-principal').value = req.amount;
+  document.getElementById('approve-term').value      = req.term;
+  document.getElementById('approve-notes').value     = req.notes || '';
+  previewApproval();
+  openModal('modal-approve-request');
+}
+
+function previewApproval() {
+  const principal = parseFloat(document.getElementById('approve-principal').value) || 0;
+  const term      = parseInt(document.getElementById('approve-term').value) || 0;
+  const box       = document.getElementById('approve-preview');
+  if (!principal || !term) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  const interest = principal * INTEREST_RATE * term;
+  const total    = principal + interest;
+  const monthly  = total / term;
+  document.getElementById('ap-monthly').textContent  = formatMoney(monthly);
+  document.getElementById('ap-interest').textContent = formatMoney(interest);
+  document.getElementById('ap-total').textContent    = formatMoney(total);
+}
+
+async function finalizeApproval() {
+  const req = STATE.activeRequest;
+  if (!req) return;
+  const principal = parseFloat(document.getElementById('approve-principal').value) || 0;
+  const term      = parseInt(document.getElementById('approve-term').value) || 0;
+  if (!principal) return toast('Enter principal amount.', 'error');
+  if (!term)      return toast('Select term.', 'error');
+
+  // 1. Find or create borrower
+  let borrower = STATE.borrowers.find(b =>
+    b.name.toLowerCase() === req.name.toLowerCase() ||
+    (req.phone && b.phone === req.phone)
+  );
+
+  try {
+    if (!borrower) {
+      const nb = await callGAS('addBorrower', {
+        name: req.name, phone: req.phone,
+        department: req.dept, employeeNo: req.empNo
+      });
+      borrower = { id: nb.id, name: req.name };
+      await refreshAll();
+    }
+
+    // 2. Create the loan
+    const result = await callGAS('addLoan', {
+      borrowerId: borrower.id, borrowerName: req.name,
+      principal, term,
+      dateReleased: document.getElementById('approve-date').value,
+      purpose: req.purpose,
+      notes: document.getElementById('approve-notes').value
+    });
+
+    // 3. Mark request as approved
+    markRequestStatus(req.refId, 'Approved');
+    toast(`Loan approved! Monthly: ${formatMoney(result.monthlyPayment)}`, 'success');
+    closeModal('modal-approve-request');
+    await refreshAll();
+    renderRequests();
+    ownerShowPage('loans');
+  } catch (e) {
+    // No GAS — just simulate locally
+    markRequestStatus(req.refId, 'Approved');
+    toast('Approved (offline mode). Connect GAS to persist.', 'success');
+    closeModal('modal-approve-request');
+    renderRequests();
+  }
+}
+
+function declineRequest(refId) {
+  if (!confirm('Decline this request?')) return;
+  markRequestStatus(refId, 'Declined');
+  renderRequests();
+  toast('Request declined.');
+}
+
+function markRequestStatus(refId, status) {
+  const requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
+  const idx = requests.findIndex(r => r.refId === refId);
+  if (idx !== -1) { requests[idx].status = status; }
+  localStorage.setItem('bib_requests', JSON.stringify(requests));
+  STATE.requests = requests;
+  updateReqBadge();
+}
+
+// ── MODALS ────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
+// ── TOAST ─────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3200);
+}
+
+// ── FORMAT HELPERS ────────────────────────────────────────────────
+function formatMoney(n) {
+  return '₱' + (parseFloat(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function formatMoneyShort(n) {
+  const v = parseFloat(n) || 0;
+  if (v >= 1000000) return '₱' + (v/1000000).toFixed(1) + 'M';
+  if (v >= 1000)    return '₱' + (v/1000).toFixed(1) + 'K';
+  return formatMoney(v);
+}
+function formatDate(d) {
+  if (!d) return '—';
+  const date = new Date(d);
+  return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+</script>
+</body>
+</html>
