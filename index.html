@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_133.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_135.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -2035,7 +2035,11 @@ async function finalizeApproval() {
   if (!principal) return toast('Enter principal amount.', 'error');
   if (!term)      return toast('Select term.', 'error');
 
-  // 1. Find or create borrower
+  // Disable button immediately to prevent double-tap
+  const btn = document.querySelector('#modal-approve-request .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
+
+  // 1. Find or create borrower (no refreshAll here — avoids an extra round-trip)
   let borrower = STATE.borrowers.find(b =>
     b.name.toLowerCase() === req.name.toLowerCase() ||
     (req.phone && b.phone === req.phone)
@@ -2048,7 +2052,8 @@ async function finalizeApproval() {
         department: req.dept, employeeNo: req.empNo
       });
       borrower = { id: nb.id, name: req.name };
-      await refreshAll();
+      // Update local state immediately — no round-trip refreshAll needed
+      STATE.borrowers.push(borrower);
     }
 
     // 2. Create the loan
@@ -2060,19 +2065,22 @@ async function finalizeApproval() {
       notes: document.getElementById('approve-notes').value
     });
 
-    // 3. Mark request as approved
+    // 3. Mark request approved & close modal instantly — then refresh in background
     markRequestStatus(req.refId, 'Approved');
     toast(`Loan approved! Monthly: ${formatMoney(result.monthlyPayment)}`, 'success');
     closeModal('modal-approve-request');
-    await refreshAll();
-    renderRequests();
     ownerShowPage('loans');
+    renderRequests();
+    // Background refresh — UI already updated, user isn't waiting
+    refreshAll();
   } catch (e) {
-    // No GAS — just simulate locally
+    // No GAS — simulate locally
     markRequestStatus(req.refId, 'Approved');
     toast('Approved (offline mode). Connect GAS to persist.', 'success');
     closeModal('modal-approve-request');
     renderRequests();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirm Approval'; }
   }
 }
 
