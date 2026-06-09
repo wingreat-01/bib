@@ -1,15 +1,13 @@
-// BIB Loans — Service Worker v2
-// Build, Invest, Borrow | Loans Made Simple
-
-const CACHE_NAME = 'bib-loans-v3';
+// BIB Loans — Service Worker v3
+const CACHE_NAME = 'bib-loans-v4';
 const STATIC_ASSETS = [
-  './index.html',
-  './manifest.json',
-  './icon-192.jpg',
-  './icon-512.jpg'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
-// ── Install: cache static shell ──────────────────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -20,7 +18,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// ── Activate: clean old caches ───────────────────────────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -37,11 +34,10 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// ── Fetch: network-only for GAS API, cache-first for static ─────
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Google Apps Script API calls — network only
+  // Google Apps Script API — network only
   if (url.hostname.includes('script.google.com')) {
     event.respondWith(
       fetch(event.request).catch(() =>
@@ -67,7 +63,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets — cache first, then network
+  // Everything else — cache first, then network
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
@@ -83,7 +79,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// ── Background sync ──────────────────────────────────────────────
 self.addEventListener('sync', (event) => {
   if (event.tag === 'bib-sync-loans') {
     event.waitUntil(syncPendingLoans());
