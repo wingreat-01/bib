@@ -43,8 +43,9 @@ function doPost(e) {
       case 'addPayment':    return respond(addPayment(data));
       case 'getDashboard':    return respond(getDashboard());
       case 'getLoanDetail':   return respond(getLoanDetail(data.loanId));
-      case 'addLoanRequest':  return respond(addLoanRequest(data));
-      default:                return respond({ error: 'Unknown action: ' + action }, false);
+      case 'addLoanRequest':    return respond(addLoanRequest(data));
+      case 'getLoanByBorrower': return respond(getLoanByBorrower(data));
+      default:                  return respond({ error: 'Unknown action: ' + action }, false);
     }
   } catch (err) {
     return respond({ error: err.message }, false);
@@ -327,4 +328,61 @@ function addLoanRequest(data) {
     'Pending'
   ]);
   return { message: 'Request saved.' };
+}
+
+// ── BORROWER SELF-LOOKUP ──────────────────────────────────────────
+
+function getLoanByBorrower(data) {
+  const phone      = (data.phone      || '').trim().replace(/\D/g, '');
+  const employeeNo = (data.employeeNo || '').trim().toLowerCase();
+
+  if (!phone && !employeeNo) {
+    return { error: 'Please provide a phone number or employee number.' };
+  }
+
+  // Find matching borrower
+  const borrowers = getBorrowers();
+  const borrower  = borrowers.find(b => {
+    const bPhone = (b.phone      || '').replace(/\D/g, '');
+    const bEmpNo = (b.employeeNo || '').trim().toLowerCase();
+    // Must match BOTH fields when both are provided, OR at least one if only one given
+    const phoneMatch  = phone      && bPhone === phone;
+    const empNoMatch  = employeeNo && bEmpNo === employeeNo;
+    if (phone && employeeNo) return phoneMatch && empNoMatch;
+    if (phone)      return phoneMatch;
+    if (employeeNo) return empNoMatch;
+    return false;
+  });
+
+  if (!borrower) {
+    return { error: 'No records found. Please double-check your phone number and employee number.' };
+  }
+
+  // Get all loans for this borrower
+  const allLoans = getLoans(borrower.id);
+  if (!allLoans.length) {
+    return { error: 'No active loans found for your account.' };
+  }
+
+  // Enrich each loan with payment data
+  const loans = allLoans.map(loan => {
+    const payments     = getPaymentsForLoan(loan.loanId);
+    const totalPaid    = payments.reduce((s, p) => s + p.amount, 0);
+    const balance      = Math.max(0, loan.totalPayable - totalPaid);
+    const progressPct  = loan.totalPayable > 0
+      ? Math.min(100, Math.round((totalPaid / loan.totalPayable) * 100))
+      : 0;
+    return { ...loan, payments, totalPaid, balance, progressPct };
+  });
+
+  return {
+    borrower: {
+      id:         borrower.id,
+      name:       borrower.name,
+      department: borrower.department,
+      employeeNo: borrower.employeeNo,
+      phone:      borrower.phone
+    },
+    loans
+  };
 }
