@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_127.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_128.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -11,6 +11,28 @@
   <title>BIB Loans — Loans Made Simple</title>
 
   <link rel="manifest" href="file:///C:/manifest.json">
+  <script>
+    // Capture beforeinstallprompt as early as possible — before DOMContentLoaded
+    window._bibDeferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      window._bibDeferredPrompt = e;
+      // Show banner when DOM is ready
+      function showBanner() {
+        var banner = document.getElementById('bib-install-banner');
+        if (banner) { banner.style.display = 'flex'; }
+        else { document.addEventListener('DOMContentLoaded', function() {
+          var b = document.getElementById('bib-install-banner');
+          if (b) b.style.display = 'flex';
+        }); }
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', showBanner);
+      } else {
+        showBanner();
+      }
+    });
+  </script>
   <link rel="apple-touch-icon" href="file:///C:/icon-192.png">
   <link rel="apple-touch-icon" sizes="512x512" href="file:///C:/icon-512.png">
 
@@ -1186,6 +1208,7 @@
           <div style="display: flex; flex-direction: column; gap: 8px;">
             <button class="btn-outline" style="text-align:left; padding: 12px 14px;" onclick="clearLocalData()">🗑️ Clear Local Cache</button>
             <button class="btn-outline" style="text-align:left; padding: 12px 14px;" onclick="refreshAll()">🔄 Refresh All Data</button>
+            <button id="btn-install-app" class="btn-primary" style="text-align:left; padding: 12px 14px;" onclick="bibTriggerInstall()">📲 Install App to Home Screen</button>
           </div>
         </div>
 
