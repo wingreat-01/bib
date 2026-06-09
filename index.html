@@ -439,6 +439,9 @@
       z-index: 200; display: none; align-items: flex-end; justify-content: center;
     }
     .modal-overlay.open { display: flex; }
+    /* Payment & approve modals must always sit above the loan detail modal */
+    #modal-add-payment.open,
+    #modal-approve-request.open { z-index: 300; }
     .modal-sheet {
       background: var(--surface); border-radius: 24px 24px 0 0;
       padding: 24px 20px; width: 100%; max-width: 480px;
@@ -1877,55 +1880,72 @@ function filterLoans(f) {
 }
 
 // ── LOAN DETAIL ──────────────────────────────────────────────────
-async function viewLoanDetail(loanId) {
-  openModal('modal-loan-detail');
-  const body = document.getElementById('loan-detail-body');
-  body.innerHTML = '<div class="loading-screen"><div class="spinner"></div></div>';
-  try {
-    const loan = await callGAS('getLoanDetail', { loanId });
-    STATE.activeLoan = loan;
-    body.innerHTML = `
-      <div class="detail-header">
-        <h2>${formatMoney(loan.principal)}</h2>
-        <p>${loan.borrowerName} · ${loan.purpose || 'Loan'}</p>
+
+// Build the full detail HTML from a loan object (with optional payments)
+function buildLoanDetailHTML(loan) {
+  const balance  = loan.balance  ?? loan.totalPayable;
+  const totalPaid = loan.totalPaid ?? 0;
+  const payments  = loan.payments  ?? [];
+  return `
+    <div class="detail-header">
+      <h2>${formatMoney(loan.principal)}</h2>
+      <p>${loan.borrowerName} · ${loan.purpose || 'Loan'}</p>
+    </div>
+    <div class="detail-grid">
+      ${detailCell('Monthly', formatMoney(loan.monthlyPayment))}
+      ${detailCell('Total Payable', formatMoney(loan.totalPayable))}
+      ${detailCell('Balance', formatMoney(balance))}
+      ${detailCell('Total Paid', formatMoney(totalPaid))}
+      ${detailCell('Released', formatDate(loan.dateReleased))}
+      ${detailCell('Due Date', formatDate(loan.dueDate))}
+      ${detailCell('Status', loan.status)}
+      ${detailCell('Term', loan.term + ' months')}
+    </div>
+    ${loan.status !== 'Paid' ? `<div style="padding:0 16px 16px;"><button class="btn-green" onclick="openPaymentModal('${loan.loanId}','${loan.borrowerName}',${balance})">💰 Record Payment</button></div>` : ''}
+    <div style="padding: 0 16px 16px;">
+      <div style="font-size:13px; font-weight:800; margin-bottom:8px; color:var(--text);">
+        Payment History (${payments.length})
+        ${loan._refreshing ? '<span style="font-size:11px; color:var(--text2); font-weight:600;"> · refreshing…</span>' : ''}
       </div>
-      <div class="detail-grid">
-        ${detailCell('Monthly', formatMoney(loan.monthlyPayment))}
-        ${detailCell('Total Payable', formatMoney(loan.totalPayable))}
-        ${detailCell('Balance', formatMoney(loan.balance ?? loan.totalPayable))}
-        ${detailCell('Total Paid', formatMoney(loan.totalPaid ?? 0))}
-        ${detailCell('Released', formatDate(loan.dateReleased))}
-        ${detailCell('Due Date', formatDate(loan.dueDate))}
-        ${detailCell('Status', loan.status)}
-        ${detailCell('Term', loan.term + ' months')}
-      </div>
-      ${loan.status !== 'Paid' ? `<div style="padding:0 16px 16px;"><button class="btn-green" onclick="openPaymentModal('${loan.loanId}','${loan.borrowerName}',${loan.balance ?? loan.totalPayable})">💰 Record Payment</button></div>` : ''}
-      <div style="padding: 0 16px 16px;">
-        <div style="font-size:13px; font-weight:800; margin-bottom:8px; color:var(--text);">Payment History (${loan.payments?.length || 0})</div>
-        <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden;">
-          ${!loan.payments?.length ? '<div style="padding:20px; text-align:center; color:var(--text2); font-size:13px;">No payments yet</div>' :
-            loan.payments.map(p => `
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden;">
+        ${!payments.length
+          ? '<div style="padding:20px; text-align:center; color:var(--text2); font-size:13px;">No payments yet</div>'
+          : payments.map(p => `
               <div class="payment-item">
                 <div><div style="font-weight:800; font-size:14px; color:var(--green-dark);">${formatMoney(p.amount)}</div><div class="p-date">${formatDate(p.date)}</div></div>
                 <div class="p-balance">Balance after<br/><strong>${formatMoney(p.runningBalance)}</strong></div>
               </div>`).join('')}
-        </div>
-      </div>`;
-  } catch (e) {
-    const loan = STATE.loans.find(l => l.loanId === loanId);
-    if (loan) {
-      STATE.activeLoan = { ...loan, borrowerId: '' };
-      body.innerHTML = `<div style="padding:16px; font-size:14px; color:var(--text);">
-        <strong>${loan.borrowerName}</strong><br/>
-        Principal: ${formatMoney(loan.principal)}<br/>
-        Total Payable: ${formatMoney(loan.totalPayable)}<br/>
-        Monthly: ${formatMoney(loan.monthlyPayment)}<br/>
-        Due: ${formatDate(loan.dueDate)}<br/>
-        Status: ${loan.status}
       </div>
-      ${loan.status !== 'Paid' ? `<div style="padding:0 16px 16px;"><button class="btn-green" onclick="openPaymentModal('${loan.loanId}','${loan.borrowerName}',${loan.totalPayable})">💰 Record Payment</button></div>` : ''}`;
-    } else {
-      body.innerHTML = '<div style="padding:20px; color:var(--danger);">Could not load: ' + e.message + '</div>';
+    </div>`;
+}
+
+async function viewLoanDetail(loanId) {
+  openModal('modal-loan-detail');
+  const body = document.getElementById('loan-detail-body');
+
+  // Step 1 — render instantly from cache (zero wait)
+  const cached = STATE.loans.find(l => l.loanId === loanId);
+  if (cached) {
+    STATE.activeLoan = { ...cached, payments: [], totalPaid: 0, balance: cached.totalPayable };
+    body.innerHTML = buildLoanDetailHTML({ ...STATE.activeLoan, _refreshing: !!STATE.gasUrl });
+  } else {
+    body.innerHTML = '<div class="loading-screen"><div class="spinner"></div></div>';
+  }
+
+  // Step 2 — fetch fresh detail (payments + live balance) silently in background
+  if (!STATE.gasUrl) return;
+  try {
+    const loan = await callGAS('getLoanDetail', { loanId });
+    // Only update if the modal is still open for this loan
+    if (document.getElementById('modal-loan-detail').classList.contains('open')) {
+      STATE.activeLoan = loan;
+      body.innerHTML = buildLoanDetailHTML(loan);
+    }
+  } catch (e) {
+    // Background refresh failed — cached view is already showing, just note it quietly
+    if (cached && document.getElementById('modal-loan-detail').classList.contains('open')) {
+      const note = body.querySelector('.detail-header p');
+      if (note) note.insertAdjacentHTML('afterend', '<div style="padding:4px 20px 0; font-size:11px; color:var(--text2);">⚠️ Payment history unavailable offline</div>');
     }
   }
 }
@@ -1948,7 +1968,7 @@ function renderBorrowers() {
     return `<div class="borrower-card">
       <div class="borrower-avatar">${initials}</div>
       <div>
-        <div class="bc-name">${b.name}</div>
+        <div class="bc-name">${b.name}${b.employeeNo ? ' <span style="font-size:11px;font-weight:600;color:var(--text2);">#' + b.employeeNo + '</span>' : ''}</div>
         <div class="bc-detail">${b.phone || '—'} · ${b.department || 'No dept'}</div>
       </div>
       <div class="bc-badge">${active} active</div>
@@ -2036,6 +2056,8 @@ function openPaymentModal(loanId, borrowerName, balance) {
   document.getElementById('pay-amount').value              = '';
   document.getElementById('pay-notes').value               = '';
   STATE.activeLoan = STATE.activeLoan || { loanId, borrowerId: '', balance };
+  // Close loan detail first so payment modal is never behind it
+  closeModal('modal-loan-detail');
   openModal('modal-add-payment');
 }
 
