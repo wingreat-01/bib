@@ -1351,6 +1351,7 @@ const STATE = {
 
 // ── PIN LOGIC ────────────────────────────────────────────────────
 let pinBuffer = '';
+let _bibDeferredPrompt = null;
 
 function showPinOverlay() {
   pinBuffer = '';
@@ -1472,8 +1473,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // PWA Install Prompt
-  let _bibDeferredPrompt = null;
-
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     _bibDeferredPrompt = e;
