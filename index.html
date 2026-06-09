@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_130.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-title" content="BIB Loans">
   <title>BIB Loans — Loans Made Simple</title>
 
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="file:///C:/manifest.json">
   <script>
     // Capture beforeinstallprompt as early as possible — before DOMContentLoaded
     window._bibDeferredPrompt = null;
@@ -33,12 +33,12 @@
       }
     });
   </script>
-  <link rel="apple-touch-icon" href="/icon-192.png">
-  <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
+  <link rel="apple-touch-icon" href="file:///C:/icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="file:///C:/icon-512.png">
 
   <link rel="preconnect" href="https://fonts.googleapis.com/">
   <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="file:///C:/Users/WAREHOUSE-PC/Downloads/index_files/css2" rel="stylesheet">
 
   <style>
     /* ── CSS Variables ──────────────────────────────────────── */
@@ -152,22 +152,25 @@
     .pin-handle { width: 40px; height: 4px; background: var(--border); border-radius: 4px; margin: 0 auto 24px; }
     .pin-title { font-size: 20px; font-weight: 900; text-align: center; margin-bottom: 6px; }
     .pin-sub { font-size: 13px; color: var(--text2); text-align: center; margin-bottom: 24px; }
-    .pin-dots { display: flex; justify-content: center; gap: 12px; margin-bottom: 28px; }
-    .pin-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--border); transition: background 0.2s; }
-    .pin-dot.filled { background: var(--blue); }
-    .pin-pad {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
-      max-width: 280px; margin: 0 auto;
+    .pin-input-wrap { position: relative; margin-bottom: 20px; }
+    .pin-input-wrap input {
+      width: 100%; padding: 14px 48px 14px 16px; font-size: 18px; font-family: var(--font);
+      border: 2px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2);
+      color: var(--text); outline: none; letter-spacing: 2px; transition: border-color 0.2s;
     }
-    .pin-key {
-      aspect-ratio: 1; border-radius: 14px; background: var(--surface2);
-      font-size: 20px; font-weight: 800; color: var(--text);
-      border: 1.5px solid var(--border); display: grid; place-items: center;
-      transition: background 0.15s, transform 0.1s;
+    .pin-input-wrap input:focus { border-color: var(--blue); }
+    .pin-input-wrap input::placeholder { letter-spacing: normal; font-size: 14px; color: var(--text2); }
+    .pin-toggle-vis {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; font-size: 20px; color: var(--text2);
+      padding: 0; line-height: 1;
     }
-    .pin-key:active { background: var(--blue); color: #fff; transform: scale(0.94); }
-    .pin-key.del { background: transparent; font-size: 18px; border-color: transparent; color: var(--text2); }
-    .pin-key.del:active { background: #ffebee; color: var(--danger); }
+    .pin-submit {
+      width: 100%; padding: 15px; border-radius: var(--radius-sm);
+      background: var(--blue); color: #fff; font-size: 16px; font-weight: 800;
+      border: none; cursor: pointer; margin-bottom: 4px; transition: background 0.2s;
+    }
+    .pin-submit:active { background: var(--blue-dark); }
     .pin-error { text-align: center; color: var(--danger); font-size: 13px; font-weight: 700; margin-top: 16px; min-height: 20px; }
     .pin-cancel { display: block; width: 100%; margin-top: 20px; padding: 14px; border-radius: var(--radius-sm); background: transparent; border: 2px solid var(--border); color: var(--text2); font-size: 14px; font-weight: 700; }
 
@@ -692,7 +695,7 @@
         <label class="agr-check-item">
           <input type="checkbox" id="chk1" onchange="updateAgreBtn()">
           <div class="agr-check-box"></div>
-          <span class="agr-check-label">Naiintindihan ko at sumasang-ayon ako na <strong style="color:#ffe082;">isusuko ko ang aking ATM</strong> sa BIB Loans bilang seguridad ng pautang.</span>
+          <span class="agr-check-label">Naiintindihan ko at sumasang-ayon ako na <strong style="color:#ffe082;">ipa-pahawak ko ang aking ATM</strong> sa BIB Loans bilang seguridad ng pautang.</span>
         </label>
 
         <label class="agr-check-item">
@@ -777,28 +780,13 @@
   <div class="pin-sheet">
     <div class="pin-handle"></div>
     <div class="pin-title">🔐 Owner Access</div>
-    <div class="pin-sub">Enter your 4-digit PIN to continue</div>
-    <div class="pin-dots" id="pin-dots">
-      <div class="pin-dot" id="pd0"></div>
-      <div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div>
-      <div class="pin-dot" id="pd3"></div>
-    </div>
-    <div class="pin-pad">
-      <button class="pin-key" onclick="pinInput(&#39;1&#39;)">1</button>
-      <button class="pin-key" onclick="pinInput(&#39;2&#39;)">2</button>
-      <button class="pin-key" onclick="pinInput(&#39;3&#39;)">3</button>
-      <button class="pin-key" onclick="pinInput(&#39;4&#39;)">4</button>
-      <button class="pin-key" onclick="pinInput(&#39;5&#39;)">5</button>
-      <button class="pin-key" onclick="pinInput(&#39;6&#39;)">6</button>
-      <button class="pin-key" onclick="pinInput(&#39;7&#39;)">7</button>
-      <button class="pin-key" onclick="pinInput(&#39;8&#39;)">8</button>
-      <button class="pin-key" onclick="pinInput(&#39;9&#39;)">9</button>
-      <div></div>
-      <button class="pin-key" onclick="pinInput(&#39;0&#39;)">0</button>
-      <button class="pin-key del" onclick="pinDelete()">⌫</button>
+    <div class="pin-sub">Enter your password to continue</div>
+    <div class="pin-input-wrap">
+      <input type="password" id="pin-input-field" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key===&#39;Enter&#39;)checkPin()">
+      <button class="pin-toggle-vis" type="button" onclick="togglePinVisibility()" id="pin-vis-btn" title="Show/hide">👁️</button>
     </div>
     <div class="pin-error" id="pin-error"></div>
+    <button class="pin-submit" onclick="checkPin()">Unlock →</button>
     <button class="pin-cancel" onclick="hidePinOverlay()">Cancel</button>
   </div>
 </div>
@@ -1177,21 +1165,21 @@
         </div>
 
         <div class="config-box">
-          <h3>🔐 Owner PIN</h3>
+          <h3>🔐 Owner Password</h3>
           <p style="font-size: 12px; color: var(--text2); margin-bottom: 12px; line-height: 1.5;">
-            Change the PIN used to access the owner dashboard. Default: <strong>1234</strong>
+            Change the password used to access the owner dashboard. Use letters, numbers &amp; symbols for stronger security. Min 6 characters. Default: <strong>BIB@1234</strong>
           </p>
           <div class="form-row">
             <div class="form-group">
-              <label>New PIN</label>
-              <input type="password" id="new-pin" placeholder="4 digits" maxlength="4" inputmode="numeric">
+              <label>New Password</label>
+              <input type="password" id="new-pin" placeholder="Min 6 characters" autocomplete="new-password">
             </div>
             <div class="form-group">
-              <label>Confirm PIN</label>
-              <input type="password" id="confirm-pin" placeholder="4 digits" maxlength="4" inputmode="numeric">
+              <label>Confirm Password</label>
+              <input type="password" id="confirm-pin" placeholder="Repeat password" autocomplete="new-password">
             </div>
           </div>
-          <button class="btn-outline btn-sm" style="margin-top: 10px;" onclick="changePin()">Update PIN</button>
+          <button class="btn-outline btn-sm" style="margin-top: 10px;" onclick="changePin()">Update Password</button>
         </div>
 
         <div class="config-box">
@@ -1358,7 +1346,7 @@
 <script>
 // ── CONSTANTS ────────────────────────────────────────────────────
 const INTEREST_RATE = 0.10;
-const DEFAULT_PIN   = '1234';
+const DEFAULT_PIN   = 'BIB@1234';
 
 // ── STATE ────────────────────────────────────────────────────────
 const STATE = {
@@ -1373,7 +1361,6 @@ const STATE = {
 };
 
 // ── PIN LOGIC ────────────────────────────────────────────────────
-let pinBuffer = '';
 let _bibDeferredPrompt = null;
 
 // Capture early — browser may fire this before DOMContentLoaded
@@ -1384,51 +1371,37 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 function showPinOverlay() {
-  pinBuffer = '';
-  updatePinDots();
+  const field = document.getElementById('pin-input-field');
+  field.value = '';
   document.getElementById('pin-error').textContent = '';
   document.getElementById('pin-overlay').classList.remove('hidden');
+  setTimeout(() => field.focus(), 80);
 }
 function hidePinOverlay() {
   document.getElementById('pin-overlay').classList.add('hidden');
-  pinBuffer = '';
-  updatePinDots();
+  document.getElementById('pin-input-field').value = '';
 }
-
-// Keyboard support — active only while PIN overlay is visible
-document.addEventListener('keydown', (e) => {
-  if (document.getElementById('pin-overlay').classList.contains('hidden')) return;
-  if (e.key >= '0' && e.key <= '9') {
-    pinInput(e.key);
-  } else if (e.key === 'Backspace') {
-    pinDelete();
-  } else if (e.key === 'Escape') {
-    hidePinOverlay();
+function togglePinVisibility() {
+  const field = document.getElementById('pin-input-field');
+  const btn   = document.getElementById('pin-vis-btn');
+  if (field.type === 'password') {
+    field.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    field.type = 'password';
+    btn.textContent = '👁️';
   }
-});
-function pinInput(digit) {
-  if (pinBuffer.length >= 4) return;
-  pinBuffer += digit;
-  updatePinDots();
-  if (pinBuffer.length === 4) setTimeout(checkPin, 150);
-}
-function pinDelete() {
-  pinBuffer = pinBuffer.slice(0, -1);
-  updatePinDots();
-}
-function updatePinDots() {
-  for (let i = 0; i < 4; i++) {
-    document.getElementById('pd' + i).classList.toggle('filled', i < pinBuffer.length);
-  }
+  field.focus();
 }
 function checkPin() {
-  if (pinBuffer === STATE.ownerPin) {
+  const entered = document.getElementById('pin-input-field').value;
+  if (entered === STATE.ownerPin) {
     hidePinOverlay();
     enterAsOwner();
   } else {
-    document.getElementById('pin-error').textContent = '❌ Wrong PIN. Try again.';
-    pinBuffer = '';
-    updatePinDots();
+    document.getElementById('pin-error').textContent = '❌ Wrong password. Try again.';
+    document.getElementById('pin-input-field').value = '';
+    document.getElementById('pin-input-field').focus();
   }
 }
 
@@ -1863,15 +1836,15 @@ async function testConnection() {
 }
 
 function changePin() {
-  const np = document.getElementById('new-pin').value.trim();
-  const cp = document.getElementById('confirm-pin').value.trim();
-  if (np.length !== 4 || !/^\d{4}$/.test(np)) return toast('PIN must be 4 digits.', 'error');
-  if (np !== cp) return toast('PINs do not match.', 'error');
+  const np = document.getElementById('new-pin').value;
+  const cp = document.getElementById('confirm-pin').value;
+  if (np.length < 6) return toast('Password must be at least 6 characters.', 'error');
+  if (np !== cp) return toast('Passwords do not match.', 'error');
   STATE.ownerPin = np;
   localStorage.setItem('bib_owner_pin', np);
   document.getElementById('new-pin').value = '';
   document.getElementById('confirm-pin').value = '';
-  toast('PIN updated!', 'success');
+  toast('✅ Password updated!', 'success');
 }
 
 function clearLocalData() {
