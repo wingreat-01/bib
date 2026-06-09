@@ -22,6 +22,22 @@ const CONFIG = {
 // ── WEB APP ENTRY POINTS ──────────────────────────────────────────────────────
 
 function doGet(e) {
+  // Allow GET-based API calls (avoids CORS preflight issues from standalone HTML)
+  if (e && e.parameter && e.parameter.action) {
+    try {
+      const action = e.parameter.action;
+      const data   = e.parameter.data ? JSON.parse(e.parameter.data) : {};
+      switch (action) {
+        case 'getLoanByBorrower': return respond(getLoanByBorrower(data));
+        case 'getDashboard':      return respond(getDashboard());
+        case 'getBorrowers':      return respond(getBorrowers());
+        case 'getLoans':          return respond(getLoans(data.borrowerId));
+        default:                  return respond({ error: 'Unknown action: ' + action }, false);
+      }
+    } catch (err) {
+      return respond({ error: err.message }, false);
+    }
+  }
   return HtmlService
     .createHtmlOutputFromFile('index')
     .setTitle('BIB Loans — Loans Made Simple')

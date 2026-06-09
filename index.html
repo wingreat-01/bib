@@ -1753,7 +1753,11 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── API ──────────────────────────────────────────────────────────
 async function callGAS(action, data = {}) {
   if (!STATE.gasUrl) throw new Error('No backend URL configured. Go to Settings.');
-  const res = await fetch(STATE.gasUrl, { method: 'POST', body: JSON.stringify({ action, data }) });
+  const res = await fetch(STATE.gasUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' }, // GAS requires text/plain for cross-origin POST
+    body: JSON.stringify({ action, data })
+  });
   const result = await res.json();
   if (!result.success) throw new Error(result.data?.error || 'Unknown error');
   return result.data;
@@ -2420,6 +2424,16 @@ function resetLookup() {
   btn.textContent = '🔍 Look Up My Loan';
 }
 
+// GET-based GAS call — no CORS preflight, works from any origin
+async function callGAS_GET(action, data = {}) {
+  if (!STATE.gasUrl) throw new Error('No backend URL configured. Please contact the owner.');
+  const url = STATE.gasUrl + '?action=' + encodeURIComponent(action) + '&data=' + encodeURIComponent(JSON.stringify(data));
+  const res = await fetch(url, { method: 'GET' });
+  const result = await res.json();
+  if (!result.success) throw new Error(result.data?.error || 'Unknown error');
+  return result.data;
+}
+
 async function doLoanLookup() {
   const phone  = document.getElementById('lv-phone').value.trim();
   const empNo  = document.getElementById('lv-empno').value.trim();
@@ -2432,7 +2446,8 @@ async function doLoanLookup() {
   btn.textContent = 'Looking up…';
 
   try {
-    const result = await callGAS('getLoanByBorrower', { phone, employeeNo: empNo });
+    // Use GET to avoid CORS issues when opened as a standalone HTML file
+    const result = await callGAS_GET('getLoanByBorrower', { phone, employeeNo: empNo });
 
     if (result.error) {
       toast(result.error, 'error');
@@ -2443,7 +2458,12 @@ async function doLoanLookup() {
 
     renderLookupResults(result);
   } catch (e) {
-    toast('Could not connect. Please try again.', 'error');
+    const msg = e.message || 'Unknown error';
+    if (msg.includes('No backend URL')) {
+      toast('❌ System not configured yet. Please contact the owner.', 'error');
+    } else {
+      toast('❌ ' + msg, 'error');
+    }
     btn.disabled    = false;
     btn.textContent = '🔍 Look Up My Loan';
   }
