@@ -754,8 +754,7 @@
       font-size: 14px; font-weight: 700; cursor: pointer;
     }
 
-  </style>
-</head>
+  
 <body>
 
 <!-- ══════════════════════════════════════════════════════════════
@@ -2273,7 +2272,10 @@ function previewApproval() {
   document.getElementById('ap-total').textContent    = formatMoney(total);
 }
 
+let _approvingLoan = false; // submission lock — prevents duplicate calls
+
 async function finalizeApproval() {
+  if (_approvingLoan) return; // already in flight, ignore extra taps
   const req = STATE.activeRequest;
   if (!req) return;
   const principal = parseFloat(document.getElementById('approve-principal').value) || 0;
@@ -2281,7 +2283,9 @@ async function finalizeApproval() {
   if (!principal) return toast('Enter principal amount.', 'error');
   if (!term)      return toast('Select term.', 'error');
 
-  const btn = document.querySelector('#modal-approve-request .btn-primary');
+  // Fix: button has class btn-green, not btn-primary
+  const btn = document.querySelector('#modal-approve-request .btn-green');
+  _approvingLoan = true;
   if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
 
   let borrower = STATE.borrowers.find(b =>
@@ -2314,12 +2318,11 @@ async function finalizeApproval() {
     renderRequests();
     refreshAll(); // background sync
   } catch (e) {
-    markRequestStatus(req.refId, 'Approved');
-    toast('Approved (offline mode). Connect GAS to persist.', 'success');
-    closeModal('modal-approve-request');
-    renderRequests();
+    // GAS call failed — do NOT mark as Approved or create a loan record
+    toast('❌ Error: ' + e.message + '. Please try again.', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Approve & Release Loan'; }
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Confirm Approval'; }
+    _approvingLoan = false;
   }
 }
 
