@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_131.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_133.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -615,7 +615,7 @@
 <!-- ══════════════════════════════════════════════════════════════
      AGREEMENT OVERLAY — shown when customer taps "I want to apply"
 ══════════════════════════════════════════════════════════════ -->
-<div id="agreement-overlay" class="">
+<div id="agreement-overlay" class="hidden">
 
   <div class="agr-header">
     <div class="agr-header-icon">📋</div>
@@ -1443,6 +1443,7 @@ function declineAgreement() {
 }
 
 function enterAsOwner() {
+  sessionStorage.setItem('bib_role', 'owner');
   document.getElementById('role-gate').classList.add('hidden');
   document.getElementById('owner-view').classList.add('active');
   document.getElementById('customer-view').classList.remove('active');
@@ -1451,6 +1452,7 @@ function enterAsOwner() {
 }
 
 function exitToGate() {
+  sessionStorage.removeItem('bib_role');
   document.getElementById('role-gate').classList.remove('hidden');
   document.getElementById('owner-view').classList.remove('active');
   document.getElementById('customer-view').classList.remove('active');
@@ -1466,6 +1468,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (STATE.gasUrl) {
     document.getElementById('gas-url-input').value = STATE.gasUrl;
     document.getElementById('setup-banner').style.display = 'none';
+  }
+
+  // Restore owner session across reloads
+  if (sessionStorage.getItem('bib_role') === 'owner') {
+    document.getElementById('role-gate').classList.add('hidden');
+    document.getElementById('owner-view').classList.add('active');
+    document.getElementById('customer-view').classList.remove('active');
+    ownerShowPage('dashboard');
+    refreshAll();
   }
 
   // PWA SW
