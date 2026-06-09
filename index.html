@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_136.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_137.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -1167,7 +1167,7 @@
         <div class="config-box">
           <h3>🔐 Owner Password</h3>
           <p style="font-size: 12px; color: var(--text2); margin-bottom: 12px; line-height: 1.5;">
-            Change the password used to access the owner dashboard. Use letters, numbers &amp; symbols for stronger security. Min 6 characters. Default: <strong>BIB@1234</strong>
+            Change the password used to access the owner dashboard. Use letters, numbers &amp; symbols for stronger security. Min 6 characters.
           </p>
           <div class="form-row">
             <div class="form-group">
@@ -1346,7 +1346,20 @@
 <script>
 // ── CONSTANTS ────────────────────────────────────────────────────
 const INTEREST_RATE = 0.10;
-const DEFAULT_PIN   = 'BIB@1234';
+// Default password hash — computed at runtime via sha256(), never stored as plain text
+
+// ── HELPERS ──────────────────────────────────────────────────────
+async function sha256(msg) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Hash of the factory default password — generated once on first load, never exposed as plain text
+let _defaultPinHash = null;
+async function getDefaultPinHash() {
+  if (!_defaultPinHash) _defaultPinHash = await sha256('BIB@1234');
+  return _defaultPinHash;
+}
 
 // ── STATE ────────────────────────────────────────────────────────
 const STATE = {
@@ -1357,7 +1370,7 @@ const STATE = {
   activeLoan: null,
   activeRequest: null,
   loanFilter: 'all',
-  ownerPin:  localStorage.getItem('bib_owner_pin') || DEFAULT_PIN
+  ownerPinHash: localStorage.getItem('bib_owner_pin_hash') || null  // stores hash, never plain text
 };
 
 // ── PIN LOGIC ────────────────────────────────────────────────────
@@ -1393,9 +1406,11 @@ function togglePinVisibility() {
   }
   field.focus();
 }
-function checkPin() {
+async function checkPin() {
   const entered = document.getElementById('pin-input-field').value;
-  if (entered === STATE.ownerPin) {
+  const enteredHash = await sha256(entered);
+  const storedHash  = STATE.ownerPinHash || await getDefaultPinHash();
+  if (enteredHash === storedHash) {
     hidePinOverlay();
     enterAsOwner();
   } else {
@@ -1853,13 +1868,16 @@ async function testConnection() {
   } catch (e) { toast('❌ ' + e.message, 'error'); }
 }
 
-function changePin() {
+async function changePin() {
   const np = document.getElementById('new-pin').value;
   const cp = document.getElementById('confirm-pin').value;
   if (np.length < 6) return toast('Password must be at least 6 characters.', 'error');
   if (np !== cp) return toast('Passwords do not match.', 'error');
-  STATE.ownerPin = np;
-  localStorage.setItem('bib_owner_pin', np);
+  const newHash = await sha256(np);
+  STATE.ownerPinHash = newHash;
+  localStorage.setItem('bib_owner_pin_hash', newHash);
+  // Remove old plain-text key if it exists from a previous version
+  localStorage.removeItem('bib_owner_pin');
   document.getElementById('new-pin').value = '';
   document.getElementById('confirm-pin').value = '';
   toast('✅ Password updated!', 'success');
