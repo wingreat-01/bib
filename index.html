@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_124.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_125.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -1353,6 +1353,15 @@ const STATE = {
 let pinBuffer = '';
 let _bibDeferredPrompt = null;
 
+// Must be top-level — browser can fire this before DOMContentLoaded
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _bibDeferredPrompt = e;
+  const banner = document.getElementById('bib-install-banner');
+  if (banner) banner.style.display = 'flex';
+  console.log('[BIB] Install prompt captured');
+});
+
 function showPinOverlay() {
   pinBuffer = '';
   updatePinDots();
@@ -1473,14 +1482,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // PWA Install Prompt
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    _bibDeferredPrompt = e;
-    const banner = document.getElementById('bib-install-banner');
-    if (banner) banner.style.display = 'flex';
-    console.log('[BIB] Install prompt ready');
-  });
-
   window.addEventListener('appinstalled', () => {
     _bibDeferredPrompt = null;
     const banner = document.getElementById('bib-install-banner');
