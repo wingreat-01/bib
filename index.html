@@ -1683,6 +1683,7 @@ function enterAsOwner() {
   document.getElementById('role-gate').classList.add('hidden');
   document.getElementById('owner-view').classList.add('active');
   document.getElementById('customer-view').classList.remove('active');
+  document.getElementById('lookup-view').classList.remove('active');
   ownerShowPage('dashboard');
   refreshAll();
 }
@@ -1692,6 +1693,7 @@ function exitToGate() {
   document.getElementById('role-gate').classList.remove('hidden');
   document.getElementById('owner-view').classList.remove('active');
   document.getElementById('customer-view').classList.remove('active');
+  document.getElementById('lookup-view').classList.remove('active');
 }
 
 // ── INIT ─────────────────────────────────────────────────────────
@@ -1711,6 +1713,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('role-gate').classList.add('hidden');
     document.getElementById('owner-view').classList.add('active');
     document.getElementById('customer-view').classList.remove('active');
+    document.getElementById('lookup-view').classList.remove('active');
     ownerShowPage('dashboard');
     refreshAll();
   }
