@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_147.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_148.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -1723,6 +1723,9 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshAll();
   }
 
+  // Retry any requests that didn't sync last time (e.g. browser closed too fast)
+  setTimeout(syncPendingRequests, 3000);
+
   // PWA SW
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
@@ -2162,6 +2165,21 @@ function updateCvEstimate() {
   document.getElementById('est-total').textContent   = formatMoney(total);
 }
 
+// Retry unsynced requests in the background
+async function syncPendingRequests() {
+  if (!STATE.gasUrl) return;
+  const requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
+  const unsynced = requests.filter(r => !r._synced);
+  if (!unsynced.length) return;
+  for (const req of unsynced) {
+    try {
+      await callGAS('addLoanRequest', req);
+      req._synced = true;
+    } catch (_) { /* will retry next time */ }
+  }
+  localStorage.setItem('bib_requests', JSON.stringify(requests));
+}
+
 // Generate a reference ID for customer requests
 function generateRefId() {
   return 'REQ-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random()*9000+1000);
@@ -2201,20 +2219,30 @@ async function submitRequest() {
   localStorage.setItem('bib_requests', JSON.stringify(requests));
   STATE.requests = requests;
 
-  // Also try to send to GAS if configured
+  // Try to save to GAS within 5 seconds, then show success regardless
   if (STATE.gasUrl) {
+    const gasTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 5000)
+    );
     try {
-      await callGAS('addLoanRequest', request);
-    } catch (_) { /* fail silently — localStorage is source of truth for requests */ }
+      await Promise.race([callGAS('addLoanRequest', request), gasTimeout]);
+      // Mark as synced so retry queue skips it
+      request._synced = true;
+      const idx = STATE.requests.findIndex(r => r.refId === refId);
+      if (idx !== -1) { STATE.requests[idx]._synced = true; localStorage.setItem('bib_requests', JSON.stringify(STATE.requests)); }
+    } catch (_) {
+      // GAS timed out or failed — request is already in localStorage, retry queue will handle it
+    }
   }
 
   btn.disabled = false;
   btn.textContent = '📩 Submit Loan Request';
-
-  // Show success
   document.getElementById('success-ref-id').textContent = refId;
   document.getElementById('cv-form-screen').style.display = 'none';
   document.getElementById('cv-success').classList.add('active');
+
+  // Retry any unsynced requests in the background
+  syncPendingRequests();
 }
 
 function resetCustomerForm() {
