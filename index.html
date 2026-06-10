@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_160.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_161.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -2024,12 +2024,22 @@ function renderBorrowers() {
     const bLoans  = STATE.loans.filter(l => l.borrowerId === b.id);
     const active  = bLoans.filter(l => l.status === 'Active').length;
     const initials = (b.name || '?').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    const safeid   = b.id.replace(/[^a-zA-Z0-9]/g, '_');
+    const pinHtml  = b.atmPin
+      ? `<div class="bc-pin-row" id="pin-row-${safeid}" style="font-size:11px;margin-top:4px;display:flex;align-items:center;gap:6px;">
+           <span style="color:var(--text2);">🏧 PIN</span>
+           <span id="pin-val-${safeid}" style="font-family:monospace;letter-spacing:2px;color:var(--text2);">${b.atmPin.replace(/./g, '●')}</span>
+           <button onclick="event.stopPropagation();toggleBorrowerPin('${safeid}','${b.atmPin}')"
+             id="pin-btn-${safeid}"
+             style="background:none;border:none;cursor:pointer;font-size:11px;font-weight:700;color:var(--blue);padding:0;">Show</button>
+         </div>`
+      : `<div class="bc-pin-row" style="font-size:11px;margin-top:4px;color:var(--text2);opacity:.55;">🏧 No PIN on file</div>`;
     return `<div class="borrower-card">
       <div class="borrower-avatar">${initials}</div>
-      <div>
+      <div style="flex:1;min-width:0;">
         <div class="bc-name">${b.name}${b.employeeNo ? ' <span style="font-size:11px;font-weight:600;color:var(--text2);">#' + b.employeeNo + '</span>' : ''}</div>
         <div class="bc-detail">${b.phone ? '0' + b.phone : '—'} · ${b.department || 'No dept'}</div>
-        ${b.atmPin ? '<div class="bc-detail" style="font-size:11px;color:var(--text2);margin-top:2px;">🏧 ATM PIN: <span style="font-family:monospace;letter-spacing:2px;">' + b.atmPin.replace(/./g, '●') + '</span> <button onclick="togglePin(this,\'' + b.atmPin + '\')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue);padding:0 4px;">Show</button></div>' : ''}
+        ${pinHtml}
       </div>
       <div class="bc-badge">${active} active</div>
     </div>`;
@@ -2052,6 +2062,23 @@ function togglePin(btn, pin) {
   } else {
     span.textContent = pin.replace(/./g, '●');
     btn.textContent  = 'Show';
+  }
+}
+
+function toggleBorrowerPin(safeid, pin) {
+  const btn = document.getElementById('pin-btn-' + safeid);
+  const val = document.getElementById('pin-val-' + safeid);
+  if (!btn || !val) return;
+  if (btn.textContent === 'Show') {
+    val.textContent = pin;
+    btn.textContent = 'Hide';
+    val.style.color = 'var(--text1)';
+    val.style.fontWeight = '700';
+  } else {
+    val.textContent = pin.replace(/./g, '●');
+    btn.textContent = 'Show';
+    val.style.color = 'var(--text2)';
+    val.style.fontWeight = '';
   }
 }
 
