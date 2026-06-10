@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_153.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_154.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -1834,13 +1834,22 @@ async function refreshAll() {
 
   // Step 2: fetch fresh data in the background, then silently update
   try {
-    const [borrowers, loans, dash] = await Promise.all([
+    const [borrowers, loans, dash, gasRequests] = await Promise.all([
       callGAS('getBorrowers'),
       callGAS('getLoans'),
-      callGAS('getDashboard')
+      callGAS('getDashboard'),
+      callGAS('getRequests')
     ]);
     STATE.borrowers = borrowers;
     STATE.loans     = loans;
+
+    // Merge GAS requests with any local-only pending entries not yet synced
+    const localRequests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
+    const gasRefIds     = new Set(gasRequests.map(r => r.refId));
+    const localOnly     = localRequests.filter(r => !gasRefIds.has(r.refId));
+    STATE.requests      = [...gasRequests, ...localOnly];
+    localStorage.setItem('bib_requests', JSON.stringify(STATE.requests));
+
     localStorage.setItem('bib_borrowers', JSON.stringify(borrowers));
     localStorage.setItem('bib_loans', JSON.stringify(loans));
     renderDashboard(dash);
@@ -2318,8 +2327,23 @@ function resetCustomerForm() {
 }
 
 // ── REQUESTS (Owner side) ─────────────────────────────────────────
-function renderRequests() {
-  STATE.requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
+async function renderRequests() {
+  // Try to pull fresh requests from GAS so all devices stay in sync
+  if (STATE.gasUrl) {
+    try {
+      const gasRequests   = await callGAS('getRequests');
+      const localRequests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
+      const gasRefIds     = new Set(gasRequests.map(r => r.refId));
+      const localOnly     = localRequests.filter(r => !gasRefIds.has(r.refId));
+      STATE.requests      = [...gasRequests, ...localOnly];
+      localStorage.setItem('bib_requests', JSON.stringify(STATE.requests));
+    } catch (_) {
+      STATE.requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
+    }
+  } else {
+    STATE.requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
+  }
+
   const pending   = STATE.requests.filter(r => r.status === 'Pending');
   const container = document.getElementById('requests-list');
   updateReqBadge();
