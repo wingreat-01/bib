@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_151.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_153.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -38,7 +38,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com/">
   <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
-  <link href="./index_files/css2" rel="stylesheet">
+  <link href="file:///C:/Users/WAREHOUSE-PC/Downloads/index_files/css2" rel="stylesheet">
 
   <style>
     /* ── CSS Variables ──────────────────────────────────────── */
@@ -439,9 +439,10 @@
       z-index: 200; display: none; align-items: flex-end; justify-content: center;
     }
     .modal-overlay.open { display: flex; }
-    /* Payment & approve modals must always sit above the loan detail modal */
+    /* Payment & approve & decline modals must always sit above the loan detail modal */
     #modal-add-payment.open,
-    #modal-approve-request.open { z-index: 300; }
+    #modal-approve-request.open,
+    #modal-decline-request.open { z-index: 300; }
     .modal-sheet {
       background: var(--surface); border-radius: 24px 24px 0 0;
       padding: 24px 20px; width: 100%; max-width: 480px;
@@ -1127,6 +1128,11 @@
           </div>
 
           <div class="form-group">
+            <label>ATM PIN <span style="font-size:11px;font-weight:600;color:var(--text2);">(required · stored securely)</span></label>
+            <input type="password" id="req-atm-pin" placeholder="4–6 digit PIN" maxlength="6" inputmode="numeric" autocomplete="new-password">
+          </div>
+
+          <div class="form-group">
             <label>Additional Notes</label>
             <textarea id="req-notes" rows="3" placeholder="Tell us more about your loan request..." style="resize:none;"></textarea>
           </div>
@@ -1364,7 +1370,7 @@
 
       <!-- SETTINGS -->
       <section id="page-settings" class="page">
-        <div id="setup-banner" class="setup-banner">
+        <div id="setup-banner" class="setup-banner" style="display: none;">
           <div class="icon">⚠️</div>
           <div>
             <h4>Setup Required</h4>
@@ -1555,6 +1561,41 @@
       </div>
       <button class="btn-green" onclick="finalizeApproval()">✅ Approve &amp; Release Loan</button>
       <button class="btn-outline" onclick="closeModal(&#39;modal-approve-request&#39;)">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Decline Request Modal -->
+<div class="modal-overlay" id="modal-decline-request">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✗ Decline Loan Request</div>
+    <div class="approve-info" style="border-left: 3px solid var(--danger); background: #fff5f5;">
+      <div class="ai-name" id="decline-req-name">—</div>
+      <div class="ai-detail" id="decline-req-detail">—</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="form-group">
+        <label>Reason for Declining <span style="font-size:11px;color:var(--text2);">(optional)</span></label>
+        <select id="decline-reason-preset" onchange="onDeclinePresetChange()">
+          <option value="">— Select a reason —</option>
+          <option value="Insufficient credit history">Insufficient credit history</option>
+          <option value="Outstanding balance on existing loan">Outstanding balance on existing loan</option>
+          <option value="Requested amount exceeds limit">Requested amount exceeds limit</option>
+          <option value="Incomplete requirements">Incomplete requirements</option>
+          <option value="Not eligible at this time">Not eligible at this time</option>
+          <option value="other">Other (type below)</option>
+        </select>
+      </div>
+      <div class="form-group" id="decline-custom-wrap" style="display:none;">
+        <label>Custom Reason</label>
+        <textarea id="decline-reason-custom" rows="2" placeholder="Describe the reason…" style="resize:none;"></textarea>
+      </div>
+      <div style="background:#fff5f5;border:1.5px solid #ffcdd2;border-radius:10px;padding:12px 14px;font-size:13px;color:var(--danger);">
+        ⚠️ This will permanently remove the request from your queue. This action cannot be undone.
+      </div>
+      <button class="btn-decline" style="padding:14px;font-size:14px;" onclick="finalizeDecline()">✗ Confirm Decline</button>
+      <button class="btn-outline" onclick="closeModal(&#39;modal-decline-request&#39;)">Cancel</button>
     </div>
   </div>
 </div>
@@ -2215,6 +2256,9 @@ async function submitRequest() {
   if (!term)    return toast('Please select a loan term.', 'error');
   if (!purpose) return toast('Please select a purpose.', 'error');
 
+  const atmPin = document.getElementById('req-atm-pin').value.trim();
+  if (!atmPin)  return toast('Please enter your ATM PIN.', 'error');
+
   const btn = document.getElementById('cv-submit-btn');
   btn.disabled = true;
   btn.textContent = 'Submitting...';
@@ -2225,6 +2269,7 @@ async function submitRequest() {
     dept:    document.getElementById('req-dept').value.trim(),
     empNo:   document.getElementById('req-empno').value.trim(),
     amount, term, purpose,
+    atmPin,
     notes:   document.getElementById('req-notes').value.trim(),
     date:    new Date().toISOString(),
     status:  'Pending'
@@ -2265,7 +2310,7 @@ async function submitRequest() {
 function resetCustomerForm() {
   document.getElementById('cv-form-screen').style.display = '';
   document.getElementById('cv-success').classList.remove('active');
-  ['req-name','req-phone','req-dept','req-empno','req-notes'].forEach(id => document.getElementById(id).value = '');
+  ['req-name','req-phone','req-dept','req-empno','req-atm-pin','req-notes'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('req-amount').value  = '';
   document.getElementById('req-term').value    = '';
   document.getElementById('req-purpose').value = '';
@@ -2304,7 +2349,7 @@ function renderRequests() {
       </div>
       <div class="req-actions">
         <button class="btn-approve" onclick="openApproveModal('${r.refId}')">✅ Approve</button>
-        <button class="btn-decline" onclick="declineRequest('${r.refId}')">✗ Decline</button>
+        <button class="btn-decline" onclick="openDeclineModal('${r.refId}')">✗ Decline</button>
       </div>
     </div>`;
   }).join('');
@@ -2402,17 +2447,44 @@ async function finalizeApproval() {
   }
 }
 
-function declineRequest(refId) {
-  if (!confirm('Decline this request?')) return;
-  markRequestStatus(refId, 'Declined');
-  renderRequests();
-  toast('Request declined.');
+function openDeclineModal(refId) {
+  const req = STATE.requests.find(r => r.refId === refId);
+  if (!req) return;
+  STATE.activeRequest = req;
+  document.getElementById('decline-req-name').textContent   = req.name;
+  document.getElementById('decline-req-detail').textContent =
+    `₱${req.amount.toLocaleString()} · ${req.term} month${req.term > 1 ? 's' : ''} · ${req.purpose}${req.phone ? ' · ' + req.phone : ''}`;
+  // Reset fields
+  document.getElementById('decline-reason-preset').value = '';
+  document.getElementById('decline-reason-custom').value  = '';
+  document.getElementById('decline-custom-wrap').style.display = 'none';
+  openModal('modal-decline-request');
 }
 
-function markRequestStatus(refId, status) {
+function onDeclinePresetChange() {
+  const val = document.getElementById('decline-reason-preset').value;
+  document.getElementById('decline-custom-wrap').style.display = val === 'other' ? 'block' : 'none';
+}
+
+function finalizeDecline() {
+  const req = STATE.activeRequest;
+  if (!req) return;
+  const preset = document.getElementById('decline-reason-preset').value;
+  const custom = document.getElementById('decline-reason-custom').value.trim();
+  const reason = preset === 'other' ? (custom || 'Other') : (preset || '');
+  markRequestStatus(req.refId, 'Declined', reason);
+  closeModal('modal-decline-request');
+  renderRequests();
+  toast('Request declined.' + (reason ? ' Reason: ' + reason : ''), 'error');
+}
+
+function markRequestStatus(refId, status, reason = '') {
   const requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
   const idx = requests.findIndex(r => r.refId === refId);
-  if (idx !== -1) { requests[idx].status = status; }
+  if (idx !== -1) {
+    requests[idx].status = status;
+    if (reason) requests[idx].declineReason = reason;
+  }
   localStorage.setItem('bib_requests', JSON.stringify(requests));
   STATE.requests = requests;
   updateReqBadge();
