@@ -121,8 +121,8 @@ function getBorrowers() {
     id:         row[0],
     name:       row[1],
     department: row[2],
-    employeeNo: row[3],
-    phone:      row[4],
+    employeeNo: String(row[3] ?? ''),
+    phone:      String(row[4] ?? ''),
     email:      row[5],
     dateAdded:  row[6] ? Utilities.formatDate(new Date(row[6]), 'Asia/Manila', 'yyyy-MM-dd') : '',
     notes:      row[7]
@@ -359,8 +359,8 @@ function getLoanByBorrower(data) {
   // Find matching borrower
   const borrowers = getBorrowers();
   const borrower  = borrowers.find(b => {
-    const bPhone = (b.phone      || '').replace(/\D/g, '');
-    const bEmpNo = (b.employeeNo || '').trim().toLowerCase();
+    const bPhone = String(b.phone      ?? '').replace(/\D/g, '');
+    const bEmpNo = String(b.employeeNo ?? '').trim().toLowerCase();
     // Must match BOTH fields when both are provided, OR at least one if only one given
     const phoneMatch  = phone      && bPhone === phone;
     const empNoMatch  = employeeNo && bEmpNo === employeeNo;
