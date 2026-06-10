@@ -60,6 +60,7 @@ function doPost(e) {
       case 'getLoans':      return respond(getLoans(data.borrowerId));
       case 'addLoan':       return respond(addLoan(data));
       case 'addPayment':    return respond(addPayment(data));
+      case 'deletePayment': return respond(deletePayment(data));
       case 'getDashboard':    return respond(getDashboard());
       case 'getLoanDetail':   return respond(getLoanDetail(data.loanId));
       case 'addLoanRequest':        return respond(addLoanRequest(data));
