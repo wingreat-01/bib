@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_166.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_167.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -2284,17 +2284,48 @@ async function submitPayment() {
   if (!amount || amount <= 0) return toast('Enter a valid amount.', 'error');
   const loan = STATE.activeLoan;
   if (!loan) return toast('No loan selected.', 'error');
+
+  const date  = document.getElementById('pay-date').value;
+  const notes = document.getElementById('pay-notes').value;
+
+  // 1. Update local state immediately — instant feedback
+  const newBalance   = Math.max(0, (loan.balance ?? loan.totalPayable) - amount);
+  const newTotalPaid = (loan.totalPaid || 0) + amount;
+  const tempId       = 'TMP-' + Date.now();
+  const newPayment   = { paymentId: tempId, amount, date, notes, runningBalance: newBalance };
+
+  loan.payments  = [...(loan.payments || []), newPayment];
+  loan.balance   = newBalance;
+  loan.totalPaid = newTotalPaid;
+  if (newBalance <= 0) loan.status = 'Paid';
+
+  // Update cached loan list too so the loans tab reflects it instantly
+  const idx = STATE.loans.findIndex(l => l.loanId === loan.loanId);
+  if (idx !== -1) Object.assign(STATE.loans[idx], { balance: newBalance, totalPaid: newTotalPaid, status: loan.status });
+
+  toast('✅ Payment recorded! Balance: ' + formatMoney(newBalance), 'success');
+  closeModal('modal-add-payment');
+
+  // Re-open loan detail instantly with updated data
+  const body = document.getElementById('loan-detail-body');
+  if (body && document.getElementById('modal-loan-detail').classList.contains('open')) {
+    body.innerHTML = buildLoanDetailHTML(loan);
+  }
+  renderLoans();
+
+  // 2. Fire GAS in the background
   try {
     const result = await callGAS('addPayment', {
       loanId: loan.loanId, borrowerId: loan.borrowerId || '',
-      amount, date: document.getElementById('pay-date').value,
-      notes: document.getElementById('pay-notes').value
+      amount, date, notes
     });
-    toast('Payment recorded! Balance: ' + formatMoney(result.runningBalance), 'success');
-    closeModal('modal-add-payment');
-    closeModal('modal-loan-detail');
-    await refreshAll();
-  } catch (e) { toast(e.message, 'error'); }
+    // Swap temp ID with real one from GAS
+    const p = loan.payments.find(p => p.paymentId === tempId);
+    if (p) p.paymentId = result.paymentId || tempId;
+    refreshAll();
+  } catch (e) {
+    toast('⚠️ Sync error: ' + e.message, 'error');
+  }
 }
 
 // ── CALCULATOR ────────────────────────────────────────────────────
