@@ -29,6 +29,8 @@ function doGet(e) {
       const data   = e.parameter.data ? JSON.parse(e.parameter.data) : {};
       switch (action) {
         case 'getLoanByBorrower': return respond(getLoanByBorrower(data));
+        case 'getRequests':       return respond(getRequests());
+        case 'updateRequestStatus': return respond(updateRequestStatus(data));
         case 'getDashboard':      return respond(getDashboard());
         case 'getBorrowers':      return respond(getBorrowers());
         case 'getLoans':          return respond(getLoans(data.borrowerId));
@@ -59,8 +61,10 @@ function doPost(e) {
       case 'addPayment':    return respond(addPayment(data));
       case 'getDashboard':    return respond(getDashboard());
       case 'getLoanDetail':   return respond(getLoanDetail(data.loanId));
-      case 'addLoanRequest':    return respond(addLoanRequest(data));
-      case 'getLoanByBorrower': return respond(getLoanByBorrower(data));
+      case 'addLoanRequest':        return respond(addLoanRequest(data));
+      case 'getRequests':           return respond(getRequests());
+      case 'updateRequestStatus':   return respond(updateRequestStatus(data));
+      case 'getLoanByBorrower':     return respond(getLoanByBorrower(data));
       default:                  return respond({ error: 'Unknown action: ' + action }, false);
     }
   } catch (err) {
@@ -88,11 +92,11 @@ function getSheet(name) {
 function createSheet(ss, name) {
   const sheet = ss.insertSheet(name);
   const headers = {
-    Borrowers: ['ID', 'Name', 'Department', 'Employee No', 'Phone', 'Email', 'Date Added', 'Notes'],
+    Borrowers: ['ID', 'Name', 'Department', 'Employee No', 'Phone', 'Email', 'Date Added', 'Notes', 'ATM PIN'],
     Loans:     ['Loan ID', 'Borrower ID', 'Borrower Name', 'Principal', 'Interest Rate', 'Term (Months)',
                 'Monthly Payment', 'Total Payable', 'Date Released', 'Due Date', 'Status', 'Purpose', 'Notes'],
     Payments:  ['Payment ID', 'Loan ID', 'Borrower ID', 'Amount', 'Date', 'Running Balance', 'Notes'],
-    LoanRequests: ['Ref ID', 'Name', 'Phone', 'Dept', 'Employee No', 'Amount', 'Term', 'Purpose', 'Notes', 'Date Submitted', 'Status'],
+    LoanRequests: ['Ref ID', 'Name', 'Phone', 'Dept', 'Employee No', 'Amount', 'Term', 'Purpose', 'Notes', 'ATM PIN', 'Date Submitted', 'Status'],
     Settings:  ['Key', 'Value']
   };
   if (headers[name]) {
@@ -125,7 +129,8 @@ function getBorrowers() {
     phone:      String(row[4] ?? ''),
     email:      row[5],
     dateAdded:  row[6] ? Utilities.formatDate(new Date(row[6]), 'Asia/Manila', 'yyyy-MM-dd') : '',
-    notes:      row[7]
+    notes:      row[7],
+    atmPin:     row[8] ? String(row[8]) : ''
   })).filter(b => b.id);
 }
 
@@ -142,7 +147,8 @@ function addBorrower(data) {
     (data.phone || '').replace(/\D/g, '').replace(/^0+/, ''), // store without leading 0
     data.email      || '',
     now,
-    data.notes      || ''
+    data.notes      || '',
+    data.atmPin     || ''
   ]);
 
   return { id, message: 'Borrower added successfully.' };
@@ -172,7 +178,14 @@ function getLoans(borrowerId) {
   })).filter(l => l.loanId);
 
   if (borrowerId) loans = loans.filter(l => l.borrowerId === borrowerId);
-  return loans;
+
+  // Enrich each loan with payment totals so progress bars work on all devices
+  return loans.map(loan => {
+    const payments  = getPaymentsForLoan(loan.loanId);
+    const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+    const balance   = Math.max(0, loan.totalPayable - totalPaid);
+    return { ...loan, totalPaid, balance };
+  });
 }
 
 function addLoan(data) {
@@ -326,7 +339,37 @@ function initializeSheets() {
   return { message: 'Sheets initialized.' };
 }
 
+function fixLoanRequestsHeader() {
+  const sheet   = getSheet(CONFIG.SHEETS.REQUESTS);
+  const headers = ['Ref ID', 'Name', 'Phone', 'Dept', 'Employee No', 'Amount', 'Term', 'Purpose', 'Notes', 'ATM PIN', 'Date Submitted', 'Status'];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+       .setFontWeight('bold')
+       .setBackground('#1a4fba')
+       .setFontColor('#ffffff');
+  return { message: 'LoanRequests header updated.' };
+}
+
 // ── LOAN REQUEST FUNCTIONS ────────────────────────────────────────
+
+function getRequests() {
+  const sheet = getSheet(CONFIG.SHEETS.REQUESTS);
+  const data  = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  return data.slice(1).map(row => ({
+    refId:   row[0],
+    name:    row[1],
+    phone:   String(row[2] ?? ''),
+    dept:    row[3],
+    empNo:   String(row[4] ?? ''),
+    amount:  parseFloat(row[5]) || 0,
+    term:    parseInt(row[6])   || 0,
+    purpose: row[7],
+    notes:   row[8],
+    atmPin:  row[9] ? String(row[9]) : '',
+    date:    row[10] ? Utilities.formatDate(new Date(row[10]), 'Asia/Manila', 'yyyy-MM-dd') : '',
+    status:  row[11] || 'Pending'
+  })).filter(r => r.refId);
+}
 
 function addLoanRequest(data) {
   const sheet = getSheet(CONFIG.SHEETS.REQUESTS);
@@ -340,10 +383,24 @@ function addLoanRequest(data) {
     parseInt(data.term)     || 0,
     data.purpose     || '',
     data.notes       || '',
+    data.atmPin      || '',
     new Date(),
     'Pending'
   ]);
   return { message: 'Request saved.' };
+}
+
+function updateRequestStatus(data) {
+  const sheet = getSheet(CONFIG.SHEETS.REQUESTS);
+  const rows  = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.refId) {
+      sheet.getRange(i + 1, 12).setValue(data.status); // column L = Status
+      if (data.reason) sheet.getRange(i + 1, 13).setValue(data.reason);
+      return { message: 'Status updated.' };
+    }
+  }
+  return { error: 'Request not found.' };
 }
 
 // ── BORROWER SELF-LOOKUP ──────────────────────────────────────────

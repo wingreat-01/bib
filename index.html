@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_158.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_159.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -1634,7 +1634,7 @@ const STATE = {
   gasUrl:    localStorage.getItem('bib_gas_url') || DEFAULT_GAS_URL,
   borrowers: JSON.parse(localStorage.getItem('bib_borrowers') || '[]'),
   loans:     JSON.parse(localStorage.getItem('bib_loans') || '[]'),
-  requests:  JSON.parse(localStorage.getItem('bib_requests') || '[]'),
+  requests:  [], // always loaded fresh from GAS — never cached locally
   activeLoan: null,
   activeRequest: null,
   loanFilter: 'all',
@@ -2203,8 +2203,10 @@ async function changePin() {
 function clearLocalData() {
   localStorage.removeItem('bib_borrowers');
   localStorage.removeItem('bib_loans');
+  localStorage.removeItem('bib_requests'); // prevent duplicate submissions on refresh
   STATE.borrowers = [];
   STATE.loans     = [];
+  STATE.requests  = [];
   toast('Local cache cleared.');
   renderDashboard();
 }
@@ -2268,22 +2270,20 @@ async function submitRequest() {
     status:  'Pending'
   };
 
-  // Save to GAS — GAS is the source of truth, no local caching needed
-  const requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
-  requests.push(request);
-  localStorage.setItem('bib_requests', JSON.stringify(requests));
-  STATE.requests = requests;
-
-  // Try to save to GAS — show error if it fails, don't silently queue
-  if (STATE.gasUrl) {
-    try {
-      await callGAS('addLoanRequest', request);
-    } catch (e) {
-      btn.disabled = false;
-      btn.textContent = '📩 Submit Loan Request';
-      toast('❌ Could not submit. Please try again. (' + e.message + ')', 'error');
-      return;
-    }
+  // Send directly to GAS — GAS is the source of truth, no local caching
+  if (!STATE.gasUrl) {
+    btn.disabled = false;
+    btn.textContent = '📩 Submit Loan Request';
+    toast('❌ No backend URL configured. Please contact the admin.', 'error');
+    return;
+  }
+  try {
+    await callGAS('addLoanRequest', request);
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = '📩 Submit Loan Request';
+    toast('❌ Could not submit. Please try again. (' + e.message + ')', 'error');
+    return;
   }
 
   btn.disabled = false;
