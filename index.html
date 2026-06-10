@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_154.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_155.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -606,7 +606,7 @@
     }
     .btn-agree:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none; }
     .btn-agree:not(:disabled):active { transform: scale(0.98); }
-    .btn-decline {
+    #agreement-overlay .btn-decline {
       background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6);
       font-size: 13px; font-weight: 700; padding: 13px;
       border-radius: var(--radius-sm); width: 100%; border: 1px solid rgba(255,255,255,0.15);
@@ -2512,6 +2512,11 @@ function markRequestStatus(refId, status, reason = '') {
   localStorage.setItem('bib_requests', JSON.stringify(requests));
   STATE.requests = requests;
   updateReqBadge();
+
+  // Persist status change to GAS sheet so all devices stay in sync
+  if (STATE.gasUrl) {
+    callGAS('updateRequestStatus', { refId, status, reason }).catch(() => {});
+  }
 }
 
 // ── MODALS ────────────────────────────────────────────────────────
