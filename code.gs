@@ -139,7 +139,7 @@ function addBorrower(data) {
     data.name       || '',
     data.department || '',
     data.employeeNo || '',
-    data.phone      || '',
+    (data.phone || '').replace(/\D/g, '').replace(/^0+/, ''), // store without leading 0
     data.email      || '',
     now,
     data.notes      || ''
@@ -349,7 +349,8 @@ function addLoanRequest(data) {
 // ── BORROWER SELF-LOOKUP ──────────────────────────────────────────
 
 function getLoanByBorrower(data) {
-  const phone      = (data.phone      || '').trim().replace(/\D/g, '');
+  // Normalize phone: strip non-digits then strip leading 0 (handles both 09XXXXXXXXX and 9XXXXXXXXX)
+  const phone      = (data.phone      || '').trim().replace(/\D/g, '').replace(/^0+/, '');
   const employeeNo = (data.employeeNo || '').trim().toLowerCase();
 
   if (!phone && !employeeNo) {
@@ -359,7 +360,7 @@ function getLoanByBorrower(data) {
   // Find matching borrower
   const borrowers = getBorrowers();
   const borrower  = borrowers.find(b => {
-    const bPhone = String(b.phone      ?? '').replace(/\D/g, '');
+    const bPhone = String(b.phone      ?? '').replace(/\D/g, '').replace(/^0+/, '');
     const bEmpNo = String(b.employeeNo ?? '').trim().toLowerCase();
     // Must match BOTH fields when both are provided, OR at least one if only one given
     const phoneMatch  = phone      && bPhone === phone;
