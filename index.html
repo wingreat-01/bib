@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_148.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_149.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -1475,6 +1475,7 @@
         <div class="form-group"><label>Employee No.</label><input type="text" id="b-empno" placeholder="EMP-001"></div>
       </div>
       <div class="form-group"><label>Phone</label><input type="tel" id="b-phone" placeholder="09XX-XXX-XXXX"></div>
+      <div class="form-group"><label>ATM PIN <span style="font-size:11px;font-weight:600;color:var(--text2);">(stored securely, owner-only)</span></label><input type="password" id="b-atm-pin" placeholder="4–6 digit PIN" maxlength="6" inputmode="numeric" autocomplete="new-password"></div>
       <div class="form-group"><label>Notes</label><textarea id="b-notes" rows="2" placeholder="Optional..." style="resize:none;"></textarea></div>
       <button class="btn-primary" onclick="submitBorrower()">✅ Save Borrower</button>
       <button class="btn-outline" onclick="closeModal(&#39;modal-add-borrower&#39;)">Cancel</button>
@@ -1978,7 +1979,8 @@ function renderBorrowers() {
       <div class="borrower-avatar">${initials}</div>
       <div>
         <div class="bc-name">${b.name}${b.employeeNo ? ' <span style="font-size:11px;font-weight:600;color:var(--text2);">#' + b.employeeNo + '</span>' : ''}</div>
-        <div class="bc-detail">${b.phone || '—'} · ${b.department || 'No dept'}</div>
+        <div class="bc-detail">${b.phone ? '0' + b.phone : '—'} · ${b.department || 'No dept'}</div>
+        ${b.atmPin ? '<div class="bc-detail" style="font-size:11px;color:var(--text2);margin-top:2px;">🏧 ATM PIN: <span style="font-family:monospace;letter-spacing:2px;">' + b.atmPin.replace(/./g, '●') + '</span> <button onclick="togglePin(this,\'' + b.atmPin + '\')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue);padding:0 4px;">Show</button></div>' : ''}
       </div>
       <div class="bc-badge">${active} active</div>
     </div>`;
@@ -1993,6 +1995,17 @@ function populateBorrowerDropdown() {
   if (cur) sel.value = cur;
 }
 
+function togglePin(btn, pin) {
+  const span = btn.previousElementSibling;
+  if (btn.textContent === 'Show') {
+    span.textContent = pin;
+    btn.textContent  = 'Hide';
+  } else {
+    span.textContent = pin.replace(/./g, '●');
+    btn.textContent  = 'Show';
+  }
+}
+
 async function submitBorrower() {
   const name = document.getElementById('b-name').value.trim();
   if (!name) return toast('Name is required.', 'error');
@@ -2001,11 +2014,12 @@ async function submitBorrower() {
       name, department: document.getElementById('b-dept').value,
       employeeNo: document.getElementById('b-empno').value,
       phone: document.getElementById('b-phone').value,
+      atmPin: document.getElementById('b-atm-pin').value.trim(),
       notes: document.getElementById('b-notes').value
     });
     toast('Borrower added!', 'success');
     closeModal('modal-add-borrower');
-    ['b-name','b-dept','b-empno','b-phone','b-notes'].forEach(id => document.getElementById(id).value = '');
+    ['b-name','b-dept','b-empno','b-phone','b-atm-pin','b-notes'].forEach(id => document.getElementById(id).value = '');
     await refreshAll();
   } catch (e) { toast(e.message, 'error'); }
 }
