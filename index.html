@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_164.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_165.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -2541,13 +2541,14 @@ async function finalizeApproval() {
   _approvingLoan = true;
   if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
 
+  // Match only by name — phone alone can collide across different people
   let borrower = STATE.borrowers.find(b =>
-    b.name.toLowerCase() === req.name.toLowerCase() ||
-    (req.phone && b.phone === req.phone)
+    b.name.trim().toLowerCase() === req.name.trim().toLowerCase()
   );
 
   try {
     if (!borrower) {
+      // New borrower — create full record
       const nb = await callGAS('addBorrower', {
         name: req.name, phone: req.phone,
         department: req.dept, employeeNo: req.empNo,
@@ -2555,6 +2556,17 @@ async function finalizeApproval() {
       });
       borrower = { id: nb.id, name: req.name };
       STATE.borrowers.push(borrower);
+    } else {
+      // Existing borrower — fill in any missing fields (dept, empNo, atmPin)
+      const updates = {};
+      if (!borrower.department && req.dept)   updates.department = req.dept;
+      if (!borrower.employeeNo && req.empNo)  updates.employeeNo = req.empNo;
+      if (!borrower.atmPin     && req.atmPin) updates.atmPin     = req.atmPin;
+      if (Object.keys(updates).length) {
+        updates.id = borrower.id;
+        await callGAS('updateBorrower', updates);
+        Object.assign(borrower, updates);
+      }
     }
 
     const result = await callGAS('addLoan', {
