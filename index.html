@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_165.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_166.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -2050,15 +2050,34 @@ function confirmDeletePayment(paymentId, loanId, amount) {
 }
 
 async function deletePaymentRecord(paymentId, loanId) {
-  try {
-    toast('Deleting payment…', 'info');
-    await callGAS('deletePayment', { paymentId, loanId });
+  // 1. Remove from local state immediately and re-render — instant feedback
+  if (STATE.activeLoan && STATE.activeLoan.loanId === loanId) {
+    const loan = STATE.activeLoan;
+    loan.payments = (loan.payments || []).filter(p => p.paymentId !== paymentId);
+
+    // Recalc running balances locally
+    let bal = loan.totalPayable || 0;
+    loan.payments.forEach(p => {
+      bal = Math.max(0, bal - p.amount);
+      p.runningBalance = bal;
+    });
+    loan.totalPaid = loan.payments.reduce((s, p) => s + p.amount, 0);
+    loan.balance   = Math.max(0, (loan.totalPayable || 0) - loan.totalPaid);
+    if (loan.balance <= 0) loan.status = 'Paid';
+    else if (loan.status === 'Paid') loan.status = 'Active';
+
+    // Re-render detail instantly
+    const body = document.getElementById('loan-detail-body');
+    if (body) body.innerHTML = buildLoanDetailHTML(loan);
     toast('✅ Payment deleted.', 'success');
-    // Refresh loan detail in place
-    await viewLoanDetail(loanId);
-    await refreshAll();
+  }
+
+  // 2. Fire GAS in background — no await blocking the UI
+  try {
+    await callGAS('deletePayment', { paymentId, loanId });
+    refreshAll(); // sync dashboard counts quietly in background
   } catch (e) {
-    toast('❌ Could not delete: ' + e.message, 'error');
+    toast('⚠️ Sync error: ' + e.message, 'error');
   }
 }
 
