@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_159.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_160.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -1526,6 +1526,7 @@
     <div class="approve-info" id="approve-request-info">
       <div class="ai-name" id="approve-req-name">—</div>
       <div class="ai-detail" id="approve-req-detail">—</div>
+      <div class="ai-detail" id="approve-req-pin" style="display:none;margin-top:4px;font-size:11px;">🏧 ATM PIN: <span id="approve-pin-val" style="font-family:monospace;letter-spacing:2px;">●●●●</span> <button onclick="toggleApprovePin()" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue);padding:0 4px;" id="approve-pin-btn">Show</button></div>
     </div>
     <div style="display: flex; flex-direction: column; gap: 12px;">
       <div class="form-row">
@@ -2054,6 +2055,19 @@ function togglePin(btn, pin) {
   }
 }
 
+function toggleApprovePin() {
+  const btn = document.getElementById('approve-pin-btn');
+  const val = document.getElementById('approve-pin-val');
+  const raw = val._raw || '';
+  if (btn.textContent === 'Show') {
+    val.textContent = raw;
+    btn.textContent = 'Hide';
+  } else {
+    val.textContent = raw.replace(/./g, '●');
+    btn.textContent = 'Show';
+  }
+}
+
 async function submitBorrower() {
   const name = document.getElementById('b-name').value.trim();
   if (!name) return toast('Name is required.', 'error');
@@ -2378,6 +2392,18 @@ function openApproveModal(refId) {
   document.getElementById('approve-principal').value = req.amount;
   document.getElementById('approve-term').value      = req.term;
   document.getElementById('approve-notes').value     = req.notes || '';
+  // Show ATM PIN row if available
+  const pinRow = document.getElementById('approve-req-pin');
+  const pinVal = document.getElementById('approve-pin-val');
+  const pinBtn = document.getElementById('approve-pin-btn');
+  if (req.atmPin) {
+    pinVal.textContent = req.atmPin.replace(/./g, '●');
+    pinVal._raw = req.atmPin;
+    pinBtn.textContent = 'Show';
+    pinRow.style.display = '';
+  } else {
+    pinRow.style.display = 'none';
+  }
   previewApproval();
   openModal('modal-approve-request');
 }
@@ -2421,7 +2447,8 @@ async function finalizeApproval() {
     if (!borrower) {
       const nb = await callGAS('addBorrower', {
         name: req.name, phone: req.phone,
-        department: req.dept, employeeNo: req.empNo
+        department: req.dept, employeeNo: req.empNo,
+        atmPin: req.atmPin || ''
       });
       borrower = { id: nb.id, name: req.name };
       STATE.borrowers.push(borrower);
