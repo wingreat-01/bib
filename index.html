@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_150.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_151.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -1934,26 +1934,28 @@ async function viewLoanDetail(loanId) {
   openModal('modal-loan-detail');
   const body = document.getElementById('loan-detail-body');
 
-  // Step 1 — render instantly from cache (zero wait)
+  // Step 1 — render instantly from cache (balance + totalPaid already enriched by getLoans)
   const cached = STATE.loans.find(l => l.loanId === loanId);
   if (cached) {
-    STATE.activeLoan = { ...cached, payments: [], totalPaid: 0, balance: cached.totalPayable };
+    // Use cached totals; payments list fetched below
+    STATE.activeLoan = { ...cached, payments: cached.payments || [] };
     body.innerHTML = buildLoanDetailHTML({ ...STATE.activeLoan, _refreshing: !!STATE.gasUrl });
   } else {
     body.innerHTML = '<div class="loading-screen"><div class="spinner"></div></div>';
   }
 
-  // Step 2 — fetch fresh detail (payments + live balance) silently in background
+  // Step 2 — fetch payment history only (balance already known from cache)
   if (!STATE.gasUrl) return;
   try {
     const loan = await callGAS('getLoanDetail', { loanId });
-    // Only update if the modal is still open for this loan
     if (document.getElementById('modal-loan-detail').classList.contains('open')) {
       STATE.activeLoan = loan;
       body.innerHTML = buildLoanDetailHTML(loan);
+      // Update cached loan with fresh payments so next open is instant
+      const idx = STATE.loans.findIndex(l => l.loanId === loanId);
+      if (idx !== -1) STATE.loans[idx] = { ...STATE.loans[idx], ...loan };
     }
   } catch (e) {
-    // Background refresh failed — cached view is already showing, just note it quietly
     if (cached && document.getElementById('modal-loan-detail').classList.contains('open')) {
       const note = body.querySelector('.detail-header p');
       if (note) note.insertAdjacentHTML('afterend', '<div style="padding:4px 20px 0; font-size:11px; color:var(--text2);">⚠️ Payment history unavailable offline</div>');
