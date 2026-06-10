@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_162.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_163.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -1968,8 +1968,13 @@ function buildLoanDetailHTML(loan) {
           ? '<div style="padding:20px; text-align:center; color:var(--text2); font-size:13px;">No payments yet</div>'
           : payments.map(p => `
               <div class="payment-item">
-                <div><div style="font-weight:800; font-size:14px; color:var(--green-dark);">${formatMoney(p.amount)}</div><div class="p-date">${formatDate(p.date)}</div></div>
-                <div class="p-balance">Balance after<br/><strong>${formatMoney(p.runningBalance)}</strong></div>
+                <div><div style="font-weight:800; font-size:14px; color:var(--green-dark);">${formatMoney(p.amount)}</div><div class="p-date">${formatDate(p.date)}${p.notes ? ' · ' + p.notes : ''}</div></div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div class="p-balance">Balance after<br/><strong>${formatMoney(p.runningBalance)}</strong></div>
+                  <button onclick="confirmDeletePayment('${p.paymentId}','${loan.loanId}',${p.amount})"
+                    title="Delete payment"
+                    style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text2);padding:4px;line-height:1;flex-shrink:0;" >🗑️</button>
+                </div>
               </div>`).join('')}
       </div>
     </div>`;
@@ -2010,6 +2015,24 @@ async function viewLoanDetail(loanId) {
 
 function detailCell(label, value) {
   return `<div class="detail-cell"><div class="label">${label}</div><div class="val">${value}</div></div>`;
+}
+
+function confirmDeletePayment(paymentId, loanId, amount) {
+  if (!confirm(`Delete this ₱${amount.toLocaleString()} payment?\n\nThis will recalculate the running balance for all remaining payments.`)) return;
+  deletePaymentRecord(paymentId, loanId);
+}
+
+async function deletePaymentRecord(paymentId, loanId) {
+  try {
+    toast('Deleting payment…', 'info');
+    await callGAS('deletePayment', { paymentId, loanId });
+    toast('✅ Payment deleted.', 'success');
+    // Refresh loan detail in place
+    await viewLoanDetail(loanId);
+    await refreshAll();
+  } catch (e) {
+    toast('❌ Could not delete: ' + e.message, 'error');
+  }
 }
 
 // ── BORROWERS ────────────────────────────────────────────────────

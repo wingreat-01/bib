@@ -290,6 +290,42 @@ function addPayment(data) {
   return { paymentId, runningBalance: Math.max(0, runningBalance), message: 'Payment recorded.' };
 }
 
+function deletePayment(data) {
+  const sheet = getSheet(CONFIG.SHEETS.PAYMENTS);
+  const rows  = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.paymentId) {
+      sheet.deleteRow(i + 1);
+      // Recalculate running balances for remaining payments on this loan
+      recalcRunningBalances(data.loanId);
+      // Recalculate loan status (may need to flip back to Active from Paid)
+      recalcLoanStatus(data.loanId);
+      return { success: true, message: 'Payment deleted.' };
+    }
+  }
+  return { success: false, message: 'Payment not found.' };
+}
+
+function recalcRunningBalances(loanId) {
+  const sheet    = getSheet(CONFIG.SHEETS.PAYMENTS);
+  const rows     = sheet.getDataRange().getValues();
+  const loanData = getLoanDetail(loanId);
+  let balance    = loanData.totalPayable || 0;
+
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][1] === loanId) {
+      balance -= (parseFloat(rows[i][3]) || 0);
+      sheet.getRange(i + 1, 6).setValue(Math.max(0, balance));
+    }
+  }
+}
+
+function recalcLoanStatus(loanId) {
+  const loanDetail = getLoanDetail(loanId);
+  const status     = (loanDetail.balance <= 0) ? 'Paid' : 'Active';
+  updateLoanStatus(loanId, status);
+}
+
 function updateLoanStatus(loanId, status) {
   const sheet = getSheet(CONFIG.SHEETS.LOANS);
   const data  = sheet.getDataRange().getValues();
