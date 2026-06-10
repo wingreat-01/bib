@@ -55,7 +55,8 @@ function doPost(e) {
 
     switch (action) {
       case 'getBorrowers':  return respond(getBorrowers());
-      case 'addBorrower':   return respond(addBorrower(data));
+      case 'addBorrower':    return respond(addBorrower(data));
+      case 'updateBorrower': return respond(updateBorrower(data));
       case 'getLoans':      return respond(getLoans(data.borrowerId));
       case 'addLoan':       return respond(addLoan(data));
       case 'addPayment':    return respond(addPayment(data));
@@ -152,6 +153,23 @@ function addBorrower(data) {
   ]);
 
   return { id, message: 'Borrower added successfully.' };
+}
+
+function updateBorrower(data) {
+  const sheet = getSheet(CONFIG.SHEETS.BORROWERS);
+  const rows  = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.id) {
+      if (data.name       !== undefined) sheet.getRange(i + 1, 2).setValue(data.name);
+      if (data.department !== undefined) sheet.getRange(i + 1, 3).setValue(data.department);
+      if (data.employeeNo !== undefined) sheet.getRange(i + 1, 4).setValue(data.employeeNo);
+      if (data.phone      !== undefined) sheet.getRange(i + 1, 5).setValue((data.phone || '').replace(/\D/g, '').replace(/^0+/, ''));
+      if (data.notes      !== undefined) sheet.getRange(i + 1, 8).setValue(data.notes);
+      if (data.atmPin     !== undefined) sheet.getRange(i + 1, 9).setValue(data.atmPin); // column I
+      return { success: true, message: 'Borrower updated.' };
+    }
+  }
+  return { success: false, message: 'Borrower not found.' };
 }
 
 // ── LOAN FUNCTIONS ────────────────────────────────────────────────────────────

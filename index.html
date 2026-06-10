@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_163.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_164.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -1489,6 +1489,33 @@
   </div>
 </div>
 
+<!-- Edit Borrower -->
+<div class="modal-overlay" id="modal-edit-borrower">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ Edit Borrower</div>
+    <input type="hidden" id="eb-id">
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="eb-name" placeholder="Juan dela Cruz"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Department</label><input type="text" id="eb-dept" placeholder="HR, Finance..."></div>
+        <div class="form-group"><label>Employee No.</label><input type="text" id="eb-empno" placeholder="EMP-001"></div>
+      </div>
+      <div class="form-group"><label>Phone</label><input type="tel" id="eb-phone" placeholder="09XX-XXX-XXXX"></div>
+      <div class="form-group">
+        <label>ATM PIN <span style="font-size:11px;font-weight:600;color:var(--text2);">(stored securely, owner-only)</span></label>
+        <div style="position:relative;">
+          <input type="password" id="eb-atm-pin" placeholder="4–6 digit PIN" maxlength="6" inputmode="numeric" autocomplete="new-password" style="padding-right:48px;">
+          <button type="button" onclick="toggleEditPin()" id="eb-pin-eye" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:0;line-height:1;">👁️</button>
+        </div>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea id="eb-notes" rows="2" placeholder="Optional..." style="resize:none;"></textarea></div>
+      <button class="btn-primary" onclick="submitEditBorrower()">💾 Save Changes</button>
+      <button class="btn-outline" onclick="closeModal(&#39;modal-edit-borrower&#39;)">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Record Payment -->
 <div class="modal-overlay" id="modal-add-payment">
   <div class="modal-sheet">
@@ -2056,7 +2083,7 @@ function renderBorrowers() {
              style="background:none;border:none;cursor:pointer;font-size:11px;font-weight:700;color:var(--blue);padding:0;">Show</button>
          </div>`
       : `<div class="bc-pin-row" style="font-size:11px;margin-top:4px;color:var(--text2);opacity:.55;">🏧 No PIN on file</div>`;
-    return `<div class="borrower-card">
+    return `<div class="borrower-card" onclick="openEditBorrower('${b.id}')">
       <div class="borrower-avatar">${initials}</div>
       <div style="flex:1;min-width:0;">
         <div class="bc-name">${b.name}${b.employeeNo ? ' <span style="font-size:11px;font-weight:600;color:var(--text2);">#' + b.employeeNo + '</span>' : ''}</div>
@@ -2119,6 +2146,56 @@ async function submitBorrower() {
     toast('Borrower added!', 'success');
     closeModal('modal-add-borrower');
     ['b-name','b-dept','b-empno','b-phone','b-atm-pin','b-notes'].forEach(id => document.getElementById(id).value = '');
+    await refreshAll();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── EDIT BORROWER ────────────────────────────────────────────────
+function openEditBorrower(id) {
+  const b = STATE.borrowers.find(b => b.id === id);
+  if (!b) return;
+  document.getElementById('eb-id').value       = b.id;
+  document.getElementById('eb-name').value     = b.name || '';
+  document.getElementById('eb-dept').value     = b.department || '';
+  document.getElementById('eb-empno').value    = b.employeeNo || '';
+  document.getElementById('eb-phone').value    = b.phone ? '0' + b.phone : '';
+  document.getElementById('eb-atm-pin').value  = b.atmPin || '';
+  document.getElementById('eb-notes').value    = b.notes || '';
+  // Reset eye button
+  const eye = document.getElementById('eb-pin-eye');
+  document.getElementById('eb-atm-pin').type = 'password';
+  if (eye) eye.textContent = '👁️';
+  openModal('modal-edit-borrower');
+}
+
+function toggleEditPin() {
+  const input = document.getElementById('eb-atm-pin');
+  const eye   = document.getElementById('eb-pin-eye');
+  if (input.type === 'password') {
+    input.type = 'text';
+    eye.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    eye.textContent = '👁️';
+  }
+}
+
+async function submitEditBorrower() {
+  const id   = document.getElementById('eb-id').value;
+  const name = document.getElementById('eb-name').value.trim();
+  if (!name) return toast('Name is required.', 'error');
+  try {
+    await callGAS('updateBorrower', {
+      id,
+      name,
+      department: document.getElementById('eb-dept').value.trim(),
+      employeeNo: document.getElementById('eb-empno').value.trim(),
+      phone:      document.getElementById('eb-phone').value.trim(),
+      atmPin:     document.getElementById('eb-atm-pin').value.trim(),
+      notes:      document.getElementById('eb-notes').value.trim()
+    });
+    toast('Borrower updated!', 'success');
+    closeModal('modal-edit-borrower');
     await refreshAll();
   } catch (e) { toast(e.message, 'error'); }
 }
