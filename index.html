@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_155.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_157.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -2343,7 +2343,10 @@ async function renderRequests() {
   } else {
     STATE.requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
   }
+  renderRequestsFromState();
+}
 
+function renderRequestsFromState() {
   const pending   = STATE.requests.filter(r => r.status === 'Pending');
   const container = document.getElementById('requests-list');
   updateReqBadge();
@@ -2496,10 +2499,24 @@ function finalizeDecline() {
   const preset = document.getElementById('decline-reason-preset').value;
   const custom = document.getElementById('decline-reason-custom').value.trim();
   const reason = preset === 'other' ? (custom || 'Other') : (preset || '');
-  markRequestStatus(req.refId, 'Declined', reason);
   closeModal('modal-decline-request');
-  renderRequests();
+
+  // Update state + localStorage immediately so UI responds instantly
+  const requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
+  const idx = requests.findIndex(r => r.refId === req.refId);
+  if (idx !== -1) {
+    requests[idx].status = 'Declined';
+    if (reason) requests[idx].declineReason = reason;
+  }
+  localStorage.setItem('bib_requests', JSON.stringify(requests));
+  STATE.requests = requests;
+  updateReqBadge();
+  renderRequestsFromState();   // render immediately from STATE, no GAS wait
+
   toast('Request declined.' + (reason ? ' Reason: ' + reason : ''), 'error');
+
+  // Persist to GAS in background — don't await
+  if (STATE.gasUrl) callGAS('updateRequestStatus', { refId: req.refId, status: 'Declined', reason }).catch(() => {});
 }
 
 function markRequestStatus(refId, status, reason = '') {
