@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_149.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_150.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -1836,7 +1836,8 @@ function renderDashboard(dash) {
 
 // ── LOAN CARDS ───────────────────────────────────────────────────
 function loanCardHTML(l) {
-  const progress = l.totalPayable > 0 ? Math.min(100, ((l.totalPayable - (l.balance || l.totalPayable)) / l.totalPayable * 100)).toFixed(0) : 0;
+  const totalPaid = l.totalPaid ?? (l.totalPayable - (l.balance ?? l.totalPayable));
+  const progress  = l.totalPayable > 0 ? Math.min(100, Math.round(totalPaid / l.totalPayable * 100)) : 0;
   const initials = (l.borrowerName || '?').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
   const isOverdue = l.status === 'Active' && new Date(l.dueDate) < new Date();
   const badgeClass = l.status === 'Paid' ? 'paid' : (isOverdue ? 'overdue' : 'active');
