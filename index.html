@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_157.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_158.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -1842,13 +1842,8 @@ async function refreshAll() {
     ]);
     STATE.borrowers = borrowers;
     STATE.loans     = loans;
-
-    // Merge GAS requests with any local-only pending entries not yet synced
-    const localRequests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
-    const gasRefIds     = new Set(gasRequests.map(r => r.refId));
-    const localOnly     = localRequests.filter(r => !gasRefIds.has(r.refId));
-    STATE.requests      = [...gasRequests, ...localOnly];
-    localStorage.setItem('bib_requests', JSON.stringify(STATE.requests));
+    STATE.requests  = gasRequests;
+    localStorage.setItem('bib_requests', JSON.stringify(gasRequests));
 
     localStorage.setItem('bib_borrowers', JSON.stringify(borrowers));
     localStorage.setItem('bib_loans', JSON.stringify(loans));
@@ -2232,20 +2227,9 @@ function updateCvEstimate() {
   document.getElementById('est-total').textContent   = formatMoney(total);
 }
 
-// Retry unsynced requests in the background
-async function syncPendingRequests() {
-  if (!STATE.gasUrl) return;
-  const requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
-  const unsynced = requests.filter(r => !r._synced);
-  if (!unsynced.length) return;
-  for (const req of unsynced) {
-    try {
-      await callGAS('addLoanRequest', req);
-      req._synced = true;
-    } catch (_) { /* will retry next time */ }
-  }
-  localStorage.setItem('bib_requests', JSON.stringify(requests));
-}
+// Retry queue removed — GAS is now the source of truth via getRequests().
+// Silently re-queuing caused duplicates when localStorage was refreshed from GAS.
+async function syncPendingRequests() { /* no-op */ }
 
 // Generate a reference ID for customer requests
 function generateRefId() {
@@ -2284,25 +2268,21 @@ async function submitRequest() {
     status:  'Pending'
   };
 
-  // Save request locally (acts as the pending queue visible to owner)
+  // Save to GAS — GAS is the source of truth, no local caching needed
   const requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
   requests.push(request);
   localStorage.setItem('bib_requests', JSON.stringify(requests));
   STATE.requests = requests;
 
-  // Try to save to GAS within 5 seconds, then show success regardless
+  // Try to save to GAS — show error if it fails, don't silently queue
   if (STATE.gasUrl) {
-    const gasTimeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), 5000)
-    );
     try {
-      await Promise.race([callGAS('addLoanRequest', request), gasTimeout]);
-      // Mark as synced so retry queue skips it
-      request._synced = true;
-      const idx = STATE.requests.findIndex(r => r.refId === refId);
-      if (idx !== -1) { STATE.requests[idx]._synced = true; localStorage.setItem('bib_requests', JSON.stringify(STATE.requests)); }
-    } catch (_) {
-      // GAS timed out or failed — request is already in localStorage, retry queue will handle it
+      await callGAS('addLoanRequest', request);
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = '📩 Submit Loan Request';
+      toast('❌ Could not submit. Please try again. (' + e.message + ')', 'error');
+      return;
     }
   }
 
@@ -2328,14 +2308,10 @@ function resetCustomerForm() {
 
 // ── REQUESTS (Owner side) ─────────────────────────────────────────
 async function renderRequests() {
-  // Try to pull fresh requests from GAS so all devices stay in sync
+  // GAS is the source of truth — always fetch fresh
   if (STATE.gasUrl) {
     try {
-      const gasRequests   = await callGAS('getRequests');
-      const localRequests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
-      const gasRefIds     = new Set(gasRequests.map(r => r.refId));
-      const localOnly     = localRequests.filter(r => !gasRefIds.has(r.refId));
-      STATE.requests      = [...gasRequests, ...localOnly];
+      STATE.requests = await callGAS('getRequests');
       localStorage.setItem('bib_requests', JSON.stringify(STATE.requests));
     } catch (_) {
       STATE.requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
