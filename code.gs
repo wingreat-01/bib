@@ -383,7 +383,7 @@ function getDashboard() {
     totalPrincipal,
     totalReceivable,
     totalCollected,
-    recentLoans:     loans.slice(-5).reverse()
+    recentLoans:     loans.slice(-10).reverse()
   };
 }
 
