@@ -67,6 +67,8 @@ function doPost(e) {
       case 'getRequests':           return respond(getRequests());
       case 'updateRequestStatus':   return respond(updateRequestStatus(data));
       case 'getLoanByBorrower':     return respond(getLoanByBorrower(data));
+      case 'approveRequest':        return respond(approveRequest(data));
+      case 'getAll':                return respond(getAll());
       default:                  return respond({ error: 'Unknown action: ' + action }, false);
     }
   } catch (err) {
@@ -84,8 +86,14 @@ function respond(data, success = true) {
 
 // ── SHEET HELPERS ─────────────────────────────────────────────────────────────
 
+let _ssCache = null;
+function getSpreadsheet() {
+  if (!_ssCache) _ssCache = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  return _ssCache;
+}
+
 function getSheet(name) {
-  const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const ss    = getSpreadsheet();
   let   sheet = ss.getSheetByName(name);
   if (!sheet) sheet = createSheet(ss, name);
   return sheet;
@@ -136,24 +144,45 @@ function getBorrowers() {
   })).filter(b => b.id);
 }
 
+function normPhone_(p) {
+  return String(p || '').replace(/\D/g, '').replace(/^0+/, '');
+}
+
 function addBorrower(data) {
-  const sheet = getSheet(CONFIG.SHEETS.BORROWERS);
-  const id    = generateId('BOR');
-  const now   = new Date();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheet = getSheet(CONFIG.SHEETS.BORROWERS);
+    const phone = normPhone_(data.phone);
+    const name  = String(data.name || '').trim().toLowerCase();
 
-  sheet.appendRow([
-    id,
-    data.name       || '',
-    data.department || '',
-    data.employeeNo || '',
-    (data.phone || '').replace(/\D/g, '').replace(/^0+/, ''), // store without leading 0
-    data.email      || '',
-    now,
-    data.notes      || '',
-    data.atmPin     || ''
-  ]);
+    // Reuse an existing borrower instead of creating a duplicate row
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] && String(rows[i][1]).trim().toLowerCase() === name &&
+          normPhone_(rows[i][4]) === phone) {
+        return { id: rows[i][0], message: 'Borrower already exists.', existing: true };
+      }
+    }
 
-  return { id, message: 'Borrower added successfully.' };
+    const id  = generateId('BOR');
+    const now = new Date();
+    sheet.appendRow([
+      id,
+      data.name       || '',
+      data.department || '',
+      data.employeeNo || '',
+      phone,
+      data.email      || '',
+      now,
+      data.notes      || '',
+      data.atmPin     || ''
+    ]);
+    SpreadsheetApp.flush();
+    return { id, message: 'Borrower added successfully.' };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function updateBorrower(data) {
@@ -198,17 +227,21 @@ function getLoans(borrowerId) {
 
   if (borrowerId) loans = loans.filter(l => l.borrowerId === borrowerId);
 
-  // Enrich each loan with payment totals so progress bars work on all devices
+  // Enrich each loan with payment totals so progress bars work on all devices.
+  // Payments are read ONCE and grouped (previously the sheet was re-read for every loan).
+  const paidByLoan = getPaymentTotals_();
   return loans.map(loan => {
-    const payments  = getPaymentsForLoan(loan.loanId);
-    const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+    const totalPaid = paidByLoan[loan.loanId] || 0;
     const balance   = Math.max(0, loan.totalPayable - totalPaid);
     return { ...loan, totalPaid, balance };
   });
 }
 
 function addLoan(data) {
-  const sheet   = getSheet(CONFIG.SHEETS.LOANS);
+  return createLoan_(getSheet(CONFIG.SHEETS.LOANS), data);
+}
+
+function createLoan_(sheet, data) {
   const loanId  = generateId('LN');
   const principal     = parseFloat(data.principal) || 0;
   const term          = parseInt(data.term)        || 1;
@@ -239,13 +272,22 @@ function addLoan(data) {
     data.notes         || ''
   ]);
 
+  const dueStr = Utilities.formatDate(dueDate, 'Asia/Manila', 'yyyy-MM-dd');
   return {
     loanId,
     principal,
     totalInterest,
     totalPayable,
     monthlyPayment,
-    dueDate: Utilities.formatDate(dueDate, 'Asia/Manila', 'yyyy-MM-dd'),
+    dueDate: dueStr,
+    // Same shape getLoans() returns, so the app can show it without a refetch
+    loan: {
+      loanId, borrowerId: data.borrowerId || '', borrowerName: data.borrowerName || '',
+      principal, interestRate, term, monthlyPayment, totalPayable,
+      dateReleased: Utilities.formatDate(dateReleased, 'Asia/Manila', 'yyyy-MM-dd'),
+      dueDate: dueStr, status: 'Active', purpose: data.purpose || '', notes: data.notes || '',
+      totalPaid: 0, balance: totalPayable
+    },
     message: 'Loan created successfully.'
   };
 }
@@ -263,6 +305,16 @@ function getLoanDetail(loanId) {
 }
 
 // ── PAYMENT FUNCTIONS ─────────────────────────────────────────────────────────
+
+function getPaymentTotals_() {
+  const data = getSheet(CONFIG.SHEETS.PAYMENTS).getDataRange().getValues();
+  const totals = {};
+  for (let i = 1; i < data.length; i++) {
+    const id = data[i][1];
+    if (id) totals[id] = (totals[id] || 0) + (parseFloat(data[i][3]) || 0);
+  }
+  return totals;
+}
 
 function getPaymentsForLoan(loanId) {
   const sheet = getSheet(CONFIG.SHEETS.PAYMENTS);
@@ -358,8 +410,8 @@ function updateLoanStatus(loanId, status) {
 
 // ── DASHBOARD SUMMARY ─────────────────────────────────────────────────────────
 
-function getDashboard() {
-  const loans     = getLoans();
+function getDashboard(preLoans, preBorrowers) {
+  const loans     = preLoans || getLoans();
   const active    = loans.filter(l => l.status === 'Active');
   const paid      = loans.filter(l => l.status === 'Paid');
   const overdue   = active.filter(l => new Date(l.dueDate) < new Date());
@@ -373,7 +425,7 @@ function getDashboard() {
   const payments = pData.length > 1 ? pData.slice(1) : [];
   const totalCollected = payments.reduce((s, r) => s + (parseFloat(r[3]) || 0), 0);
 
-  const borrowers = getBorrowers();
+  const borrowers = preBorrowers || getBorrowers();
 
   return {
     totalBorrowers:  borrowers.length,
@@ -514,4 +566,103 @@ function getLoanByBorrower(data) {
     },
     loans
   };
+}
+
+
+// ── ONE-CALL REFRESH ──────────────────────────────────────────────
+// Replaces 4 separate round-trips (borrowers, loans, dashboard, requests).
+function getAll() {
+  const borrowers = getBorrowers();
+  const loans     = getLoans();
+  return {
+    borrowers,
+    loans,
+    dashboard: getDashboard(loans, borrowers),
+    requests:  getRequests()
+  };
+}
+
+// ── APPROVE A LOAN REQUEST (single atomic call) ───────────────────
+// Finds/creates the borrower, creates the loan and marks the request Approved
+// in ONE round-trip, under a lock. Safe to retry: an already-approved request
+// is never approved twice.
+function approveRequest(data) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const reqSheet = getSheet(CONFIG.SHEETS.REQUESTS);
+    const reqRows  = reqSheet.getDataRange().getValues();
+    let reqRow = -1;
+    for (let i = 1; i < reqRows.length; i++) {
+      if (reqRows[i][0] === data.refId) { reqRow = i; break; }
+    }
+    if (reqRow === -1) return { error: 'Request not found.' };
+
+    const r = reqRows[reqRow];
+    const currentStatus = r[11] || 'Pending';
+    if (currentStatus === 'Approved') {
+      return { alreadyApproved: true, loanId: r[13] || '', message: 'This request was already approved.' };
+    }
+    if (currentStatus === 'Declined') {
+      return { error: 'This request was already declined.' };
+    }
+
+    // ── Borrower: match by name (prefer name + phone), else create ──
+    const bSheet = getSheet(CONFIG.SHEETS.BORROWERS);
+    const bRows  = bSheet.getDataRange().getValues();
+    const name   = String(data.name || r[1] || '').trim();
+    const nameLc = name.toLowerCase();
+    const phone  = normPhone_(data.phone || r[2]);
+    const dept   = data.dept  || r[3] || '';
+    const empNo  = data.empNo || r[4] || '';
+    const atmPin = data.atmPin || r[9] || '';
+
+    let bIdx = -1;
+    for (let i = 1; i < bRows.length; i++) {
+      if (!bRows[i][0] || String(bRows[i][1]).trim().toLowerCase() !== nameLc) continue;
+      if (normPhone_(bRows[i][4]) === phone) { bIdx = i; break; }   // best match
+      if (bIdx === -1) bIdx = i;                                    // fallback: name only
+    }
+
+    let borrower;
+    if (bIdx === -1) {
+      const id = generateId('BOR');
+      bSheet.appendRow([id, name, dept, empNo, phone, '', new Date(), '', atmPin]);
+      borrower = { id, name, department: dept, employeeNo: String(empNo), phone,
+                   email: '', notes: '', atmPin: String(atmPin),
+                   dateAdded: Utilities.formatDate(new Date(), 'Asia/Manila', 'yyyy-MM-dd') };
+    } else {
+      const b = bRows[bIdx];
+      // Fill in any missing fields on the existing borrower
+      if (!b[2] && dept)   { bSheet.getRange(bIdx + 1, 3).setValue(dept);   b[2] = dept; }
+      if (!b[3] && empNo)  { bSheet.getRange(bIdx + 1, 4).setValue(empNo);  b[3] = empNo; }
+      if (!b[8] && atmPin) { bSheet.getRange(bIdx + 1, 9).setValue(atmPin); b[8] = atmPin; }
+      borrower = { id: b[0], name: b[1], department: b[2], employeeNo: String(b[3] ?? ''),
+                   phone: String(b[4] ?? ''), email: b[5], notes: b[7],
+                   atmPin: b[8] ? String(b[8]) : '',
+                   dateAdded: b[6] ? Utilities.formatDate(new Date(b[6]), 'Asia/Manila', 'yyyy-MM-dd') : '' };
+    }
+
+    // ── Loan ──
+    const loanRes = createLoan_(getSheet(CONFIG.SHEETS.LOANS), {
+      borrowerId:   borrower.id,
+      borrowerName: name,
+      principal:    data.principal,
+      term:         data.term,
+      dateReleased: data.dateReleased,
+      purpose:      data.purpose || r[7] || '',
+      notes:        data.notes
+    });
+
+    // ── Mark request approved (col L = Status, col N = Loan ID) ──
+    reqSheet.getRange(reqRow + 1, 12).setValue('Approved');
+    reqSheet.getRange(reqRow + 1, 14).setValue(loanRes.loanId);
+    if (!reqSheet.getRange(1, 13).getValue()) reqSheet.getRange(1, 13).setValue('Reason');
+    if (!reqSheet.getRange(1, 14).getValue()) reqSheet.getRange(1, 14).setValue('Loan ID');
+
+    SpreadsheetApp.flush();
+    return Object.assign({}, loanRes, { borrower, message: 'Loan approved.' });
+  } finally {
+    lock.releaseLock();
+  }
 }

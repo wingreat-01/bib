@@ -1825,16 +1825,30 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── API ──────────────────────────────────────────────────────────
-async function callGAS(action, data = {}) {
+async function callGAS(action, data = {}, timeoutMs = 60000) {
   if (!STATE.gasUrl) throw new Error('No backend URL configured. Go to Settings.');
-  const res = await fetch(STATE.gasUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' }, // GAS requires text/plain for cross-origin POST
-    body: JSON.stringify({ action, data })
-  });
-  const result = await res.json();
-  if (!result.success) throw new Error(result.data?.error || 'Unknown error');
-  return result.data;
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(STATE.gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' }, // GAS requires text/plain for cross-origin POST
+      body: JSON.stringify({ action, data }),
+      signal: ctrl.signal
+    });
+    const result = await res.json();
+    if (!result.success) throw new Error(result.data?.error || 'Unknown error');
+    return result.data;
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      const err = new Error('The server is taking too long to respond.');
+      err.timeout = true;
+      throw err;
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ── OWNER NAVIGATION ─────────────────────────────────────────────
@@ -1861,12 +1875,21 @@ async function refreshAll() {
 
   // Step 2: fetch fresh data in the background, then silently update
   try {
-    const [borrowers, loans, dash, gasRequests] = await Promise.all([
-      callGAS('getBorrowers'),
-      callGAS('getLoans'),
-      callGAS('getDashboard'),
-      callGAS('getRequests')
-    ]);
+    let borrowers, loans, dash, gasRequests;
+    try {
+      // One round-trip instead of four
+      const all = await callGAS('getAll');
+      borrowers = all.borrowers; loans = all.loans; dash = all.dashboard; gasRequests = all.requests;
+    } catch (err) {
+      // Backend not redeployed yet? Fall back to the old four calls.
+      if (!/Unknown action/i.test(err.message)) throw err;
+      [borrowers, loans, dash, gasRequests] = await Promise.all([
+        callGAS('getBorrowers'),
+        callGAS('getLoans'),
+        callGAS('getDashboard'),
+        callGAS('getRequests')
+      ]);
+    }
     STATE.borrowers = borrowers;
     STATE.loans     = loans;
     STATE.requests  = gasRequests;
@@ -2556,6 +2579,7 @@ function openApproveModal(refId) {
   document.getElementById('approve-principal').value = req.amount;
   document.getElementById('approve-term').value      = req.term;
   document.getElementById('approve-notes').value     = req.notes || '';
+  resetApproveButton();
   // Show ATM PIN row if available
   previewApproval();
   openModal('modal-approve-request');
@@ -2577,6 +2601,11 @@ function previewApproval() {
 
 let _approvingLoan = false; // submission lock — prevents duplicate calls
 
+function resetApproveButton() {
+  const btn = document.querySelector('#modal-approve-request .btn-green');
+  if (btn) { btn.disabled = false; btn.textContent = '✅ Approve & Release Loan'; }
+}
+
 async function finalizeApproval() {
   if (_approvingLoan) return; // already in flight, ignore extra taps
   const req = STATE.activeRequest;
@@ -2586,57 +2615,50 @@ async function finalizeApproval() {
   if (!principal) return toast('Enter principal amount.', 'error');
   if (!term)      return toast('Select term.', 'error');
 
-  // Fix: button has class btn-green, not btn-primary
   const btn = document.querySelector('#modal-approve-request .btn-green');
   _approvingLoan = true;
   if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
 
-  // Match only by name — phone alone can collide across different people
-  let borrower = STATE.borrowers.find(b =>
-    b.name.trim().toLowerCase() === req.name.trim().toLowerCase()
-  );
-
   try {
-    if (!borrower) {
-      // New borrower — create full record
-      const nb = await callGAS('addBorrower', {
-        name: req.name, phone: req.phone,
-        department: req.dept, employeeNo: req.empNo,
-        atmPin: req.atmPin || ''
-      });
-      borrower = { id: nb.id, name: req.name };
-      STATE.borrowers.push(borrower);
-    } else {
-      // Existing borrower — fill in any missing fields (dept, empNo, atmPin)
-      const updates = {};
-      if (!borrower.department && req.dept)   updates.department = req.dept;
-      if (!borrower.employeeNo && req.empNo)  updates.employeeNo = req.empNo;
-      if (!borrower.atmPin     && req.atmPin) updates.atmPin     = req.atmPin;
-      if (Object.keys(updates).length) {
-        updates.id = borrower.id;
-        await callGAS('updateBorrower', updates);
-        Object.assign(borrower, updates);
-      }
-    }
-
-    const result = await callGAS('addLoan', {
-      borrowerId: borrower.id, borrowerName: req.name,
+    // ONE call: backend finds/creates the borrower, creates the loan and marks the
+    // request Approved under a lock. Retrying is safe — it can never approve twice.
+    const result = await callGAS('approveRequest', {
+      refId: req.refId,
+      name: req.name, phone: req.phone, dept: req.dept, empNo: req.empNo,
+      atmPin: req.atmPin || '', purpose: req.purpose,
       principal, term,
       dateReleased: document.getElementById('approve-date').value,
-      purpose: req.purpose,
       notes: document.getElementById('approve-notes').value
-    });
+    }, 90000);
 
-    markRequestStatus(req.refId, 'Approved');
-    toast(`Loan approved! Monthly: ${formatMoney(result.monthlyPayment)}`, 'success');
+    markRequestStatus(req.refId, 'Approved', '', false); // local only, server already updated
+
+    if (result.alreadyApproved) {
+      toast('This request was already approved.', 'success');
+      refreshAll();
+    } else {
+      // Update local data directly instead of refetching everything
+      if (result.borrower && !STATE.borrowers.some(b => b.id === result.borrower.id)) {
+        STATE.borrowers.push(result.borrower);
+      }
+      if (result.loan) STATE.loans.unshift(result.loan);
+      localStorage.setItem('bib_borrowers', JSON.stringify(STATE.borrowers));
+      localStorage.setItem('bib_loans', JSON.stringify(STATE.loans));
+      toast(`Loan approved! Monthly: ${formatMoney(result.monthlyPayment)}`, 'success');
+    }
+
     closeModal('modal-approve-request');
     ownerShowPage('loans');
-    renderRequests();
-    refreshAll(); // background sync
+    renderRequestsFromState();
+    renderDashboard();
+    renderBorrowers();
   } catch (e) {
-    // GAS call failed — do NOT mark as Approved or create a loan record
-    toast('❌ Error: ' + e.message + '. Please try again.', 'error');
-    if (btn) { btn.disabled = false; btn.textContent = '✅ Approve & Release Loan'; }
+    if (e.timeout) {
+      toast('⏳ Server is slow. It may have gone through — it is safe to tap Approve again (duplicates are blocked).', 'error');
+    } else {
+      toast('❌ Error: ' + e.message + '. Please try again.', 'error');
+    }
+    resetApproveButton();
   } finally {
     _approvingLoan = false;
   }
@@ -2687,7 +2709,7 @@ function finalizeDecline() {
   if (STATE.gasUrl) callGAS('updateRequestStatus', { refId: req.refId, status: 'Declined', reason }).catch(() => {});
 }
 
-function markRequestStatus(refId, status, reason = '') {
+function markRequestStatus(refId, status, reason = '', sync = true) {
   const requests = JSON.parse(localStorage.getItem('bib_requests') || '[]');
   const idx = requests.findIndex(r => r.refId === refId);
   if (idx !== -1) {
@@ -2699,7 +2721,7 @@ function markRequestStatus(refId, status, reason = '') {
   updateReqBadge();
 
   // Persist status change to GAS sheet so all devices stay in sync
-  if (STATE.gasUrl) {
+  if (sync && STATE.gasUrl) {
     callGAS('updateRequestStatus', { refId, status, reason }).catch(() => {});
   }
 }
